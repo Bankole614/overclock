@@ -3,8 +3,9 @@ import { Paddle, TableConfig, Vec2 } from '../types';
 export class InputManager {
   private targetPos: Vec2;
   private canvasRect: DOMRect | null = null;
-  private scaleX = 1;
-  private scaleY = 1;
+  private scale = 1;
+  private offsetX = 0;
+  private offsetY = 0;
 
   // Keyboard state
   private keys: { [key: string]: boolean } = {};
@@ -33,8 +34,13 @@ export class InputManager {
   public updateCanvasBounds() {
     this.canvasRect = this.canvas.getBoundingClientRect();
     if (this.canvasRect.width > 0 && this.canvasRect.height > 0) {
-      this.scaleX = this.table.width / this.canvasRect.width;
-      this.scaleY = this.table.height / this.canvasRect.height;
+      const scale = Math.min(
+        this.canvasRect.width / this.table.width,
+        this.canvasRect.height / this.table.height
+      );
+      this.scale = scale;
+      this.offsetX = (this.canvasRect.width - this.table.width * scale) / 2;
+      this.offsetY = (this.canvasRect.height - this.table.height * scale) / 2;
     }
   }
 
@@ -50,8 +56,8 @@ export class InputManager {
       const clientX = e.clientX - this.canvasRect.left;
       const clientY = e.clientY - this.canvasRect.top;
 
-      this.targetPos.x = clientX * this.scaleX;
-      this.targetPos.y = clientY * this.scaleY;
+      this.targetPos.x = (clientX - this.offsetX) / this.scale;
+      this.targetPos.y = (clientY - this.offsetY) / this.scale;
     });
 
     // Right-click or mouse down on canvas for Parry
@@ -80,8 +86,8 @@ export class InputManager {
       const clientY = touch.clientY - this.canvasRect.top;
 
       const verticalOffset = 55;
-      this.targetPos.x = clientX * this.scaleX;
-      this.targetPos.y = clientY * this.scaleY - verticalOffset;
+      this.targetPos.x = (clientX - this.offsetX) / this.scale;
+      this.targetPos.y = (clientY - this.offsetY) / this.scale - verticalOffset;
     };
 
     this.canvas.addEventListener('touchstart', (e) => {

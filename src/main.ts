@@ -1,11 +1,17 @@
 import { Game } from './game/game';
 import { StorageManager } from './storage/storage';
 import { SHOP_CATALOG } from './shop/shop';
+import { refreshIcons, setLabel } from './icons';
+
+// Lucide icon per boss (swap freely) and default icon per shop category.
+const BOSS_ICONS: Record<string, string> = { VIPER: 'worm', TITAN: 'shield', PHANTOM: 'ghost', APEX: 'crown' };
+const SHOP_ICONS: Record<string, string> = { paddle: 'circle-dot', trail: 'wind', goal: 'sparkles' };
 
 window.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
   if (!canvas) return;
 
+  refreshIcons();
   const game = new Game(canvas);
 
   // HUD Elements
@@ -94,10 +100,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const updateSeriesScoreUI = () => {
     if (game.series.targetGamesToWin > 1) {
-      hudSeriesScore.textContent = `SERIES: ${game.series.playerGames} - ${game.series.robotGames} (${game.series.format})`;
+      setLabel(hudSeriesScore, `SERIES: ${game.series.playerGames} - ${game.series.robotGames} (${game.series.format})`, 'trophy');
       hudSeriesScore.classList.remove('hidden');
     } else if (game.series.format === 'FIRST_TO_3') {
-      hudSeriesScore.textContent = 'BLITZ (FIRST TO 3)';
+      setLabel(hudSeriesScore, 'BLITZ (FIRST TO 3)', 'trophy');
       hudSeriesScore.classList.remove('hidden');
     } else {
       hudSeriesScore.classList.add('hidden');
@@ -173,20 +179,22 @@ window.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = `boss-card ${boss.unlocked ? '' : 'locked'} ${boss.defeated ? 'defeated' : ''}`;
 
-      const avatarIcon = boss.id === 'VIPER' ? '🐍' : boss.id === 'TITAN' ? '🛡️' : boss.id === 'PHANTOM' ? '👻' : boss.id === 'APEX' ? '👑' : '🤖';
+      const avatarIcon = BOSS_ICONS[boss.id] || 'bot';
 
       card.innerHTML = `
         <div class="boss-avatar" style="border-color: ${boss.color}; color: ${boss.color};">
-          ${avatarIcon}
+          <i data-lucide="${avatarIcon}"></i>
         </div>
         <div class="boss-info">
           <div class="boss-name" style="color: ${boss.color};">
-            ${boss.name} ${boss.defeated ? '✓ DEFEATED' : ''}
+            ${boss.name}${boss.defeated ? ' <span class="boss-tag"><i data-lucide="check"></i> Defeated</span>' : ''}
           </div>
           <div class="boss-title">${boss.title}</div>
           <div class="boss-signature">Signature: ${boss.signature}</div>
         </div>
-        ${boss.unlocked ? '<span style="color: var(--cyan-glow); font-size: 0.8rem; font-weight: 800;">CHALLENGE →</span>' : '<span>🔒</span>'}
+        ${boss.unlocked
+          ? '<span class="boss-cta">Challenge <i data-lucide="chevron-right"></i></span>'
+          : '<span class="boss-lock"><i data-lucide="lock"></i></span>'}
       `;
 
       if (boss.unlocked) {
@@ -201,6 +209,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       bossCardsGrid.appendChild(card);
     });
+    refreshIcons();
   };
 
   // --- Shop UI ---
@@ -220,22 +229,25 @@ window.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = `shop-card ${isEquipped ? 'equipped' : ''}`;
 
-      let actionBtnText = 'BUY';
-      let actionBtnColor = 'var(--amber-warn)';
+      let actionLabel = `<i data-lucide="cpu"></i> ${item.cost}`;
+      let actionBtnColor = 'var(--gold)';
       if (isEquipped) {
-        actionBtnText = 'EQUIPPED';
-        actionBtnColor = 'var(--emerald-viper)';
+        actionLabel = '<i data-lucide="check"></i> Equipped';
+        actionBtnColor = 'var(--lime)';
       } else if (isUnlocked) {
-        actionBtnText = 'EQUIP';
-        actionBtnColor = 'var(--cyan-glow)';
+        actionLabel = 'Equip';
+        actionBtnColor = 'var(--ice)';
       }
 
+      // Optional: add a `lucide` field to items in SHOP_CATALOG to give each its own icon.
+      const itemIcon = (item as any).lucide || SHOP_ICONS[item.category] || 'sparkles';
+
       card.innerHTML = `
-        <div class="shop-icon">${item.icon}</div>
+        <div class="shop-icon" style="color: ${item.color};"><i data-lucide="${itemIcon}"></i></div>
         <div class="shop-item-name" style="color: ${item.color};">${item.name}</div>
         <div class="shop-item-desc">${item.description}</div>
-        <button class="shop-cost-btn" style="color: ${actionBtnColor}; border: 1px solid ${actionBtnColor};">
-          ${isUnlocked ? actionBtnText : `⚡ ${item.cost} CHIPS`}
+        <button class="shop-cost-btn" type="button" style="color: ${actionBtnColor}; border-color: ${actionBtnColor};">
+          ${actionLabel}
         </button>
       `;
 
@@ -257,6 +269,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       shopItemsGrid.appendChild(card);
     });
+    refreshIcons();
   };
 
   [tabPaddle, tabTrail, tabGoal].forEach((tab) => {
@@ -272,7 +285,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // --- Multiplayer WebRTC Logic ---
   btnHostRoom.addEventListener('click', () => {
-    btnHostRoom.textContent = 'CONNECTING TO SIGNALING...';
+    setLabel(btnHostRoom, 'Connecting to signaling...', 'loader-2', { spin: true });
     game.net.hostGame((roomCode) => {
       hostCodeDisplay.classList.remove('hidden');
       roomCodeText.textContent = roomCode;
@@ -288,10 +301,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   btnCopyCode.addEventListener('click', () => {
     navigator.clipboard.writeText(roomCodeText.textContent || '');
-    btnCopyCode.textContent = 'COPIED!';
-    setTimeout(() => {
-      btnCopyCode.textContent = 'COPY CODE';
-    }, 1800);
+    setLabel(btnCopyCode, 'Copied!', 'check');
+    setTimeout(() => setLabel(btnCopyCode, 'Copy code', 'copy'), 1800);
   });
 
   btnJoinRoom.addEventListener('click', () => {
@@ -332,10 +343,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
       if (game.mode === 'SOLO_BOSS') {
         const currentBoss = game.bossManager.getCurrentBoss();
-        hudRobotBadge.textContent = currentBoss.name;
+        setLabel(hudRobotBadge, currentBoss.name, 'cpu');
         hudPhaseBadge.textContent = game.robot.phase;
       } else {
-        hudRobotBadge.textContent = game.mode === 'MULTIPLAYER_HOST' ? 'OPPONENT [GUEST]' : 'OPPONENT [HOST]';
+        setLabel(hudRobotBadge, game.mode === 'MULTIPLAYER_HOST' ? 'OPPONENT [GUEST]' : 'OPPONENT [HOST]', 'globe');
         hudPhaseBadge.textContent = 'ONLINE 1v1';
       }
       updateSeriesScoreUI();
@@ -365,14 +376,14 @@ window.addEventListener('DOMContentLoaded', () => {
     resPlayerScore.textContent = stats.playerScore.toString();
     resRobotScore.textContent = stats.robotScore.toString();
     insightText.textContent = insight;
-    resultChipsEarned.textContent = `+${stats.chipsEarned} OVERCLOCK CHIPS EARNED`;
+    setLabel(resultChipsEarned, `+${stats.chipsEarned} overclock chips earned`, 'cpu');
 
     if (resSeriesSummary) {
       if (game.series.targetGamesToWin > 1) {
-        resSeriesSummary.textContent = `SERIES RESULT: ${game.series.playerGames} - ${game.series.robotGames} (${game.series.format})`;
+        setLabel(resSeriesSummary, `SERIES RESULT: ${game.series.playerGames} - ${game.series.robotGames} (${game.series.format})`, 'trophy');
         resSeriesSummary.classList.remove('hidden');
       } else if (game.series.format === 'FIRST_TO_3') {
-        resSeriesSummary.textContent = `BLITZ MATCH (FIRST TO 3)`;
+        setLabel(resSeriesSummary, 'BLITZ MATCH (FIRST TO 3)', 'trophy');
         resSeriesSummary.classList.remove('hidden');
       } else {
         resSeriesSummary.classList.add('hidden');
@@ -389,7 +400,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const nextBossId = game.bossManager.getNextBossId(game.bossManager.currentBossId);
       if (nextBossId) {
         const nextBoss = game.bossManager.bosses[nextBossId];
-        btnNextBoss.textContent = `NEXT LEVEL: ${nextBoss.name} →`;
+        setLabel(btnNextBoss, `Next level: ${nextBoss.name}`, 'chevron-right', { after: true });
         btnNextBoss.classList.remove('hidden');
       } else {
         btnNextBoss.classList.add('hidden');

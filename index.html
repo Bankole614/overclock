@@ -2,312 +2,243 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#080c14" />
     <title>OVERCLOCK // Kinetic Cyber Air Hockey</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,700;1,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div id="app">
       <div id="game-container">
-        <!-- Top In-Game HUD -->
+
+        <!-- In-game HUD -->
         <div id="hud" class="hidden">
-          <div class="hud-panel">
-            <div class="hud-score robot-score-box">
-              <span id="hud-robot-score">0</span>
-            </div>
-            <div style="display: flex; flex-direction: column; text-align: left;">
-              <span id="hud-robot-badge" style="font-size: 0.72rem; color: #ff2a6d; font-weight: 800; letter-spacing: 1px;">MK-I VECTOR</span>
-              <span id="hud-phase-badge" style="font-size: 0.62rem; color: #ffb703; letter-spacing: 0.5px;">ANALYTICAL</span>
+          <div class="hud-side">
+            <div class="hud-score robot-score-box"><span id="hud-robot-score">0</span></div>
+            <div class="hud-meta">
+              <span id="hud-robot-badge" class="hud-robot-badge"><i data-lucide="cpu"></i> MK-I VECTOR</span>
+              <span id="hud-phase-badge" class="hud-phase-badge">ANALYTICAL</span>
             </div>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span id="hud-series-score" class="hidden" style="font-size: 0.72rem; color: #ffb703; font-weight: 800; letter-spacing: 1px; background: rgba(0,0,0,0.5); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,183,3,0.3);">GAMES: 0 - 0</span>
-            <button id="btn-pause-toggle" class="hud-btn">PAUSE</button>
+          <div class="hud-center">
+            <span id="hud-series-score" class="series-chip hidden"><i data-lucide="trophy"></i> GAMES: 0 - 0</span>
+            <button id="btn-pause-toggle" class="hud-btn" type="button" aria-label="Pause"><i data-lucide="pause"></i></button>
           </div>
 
-          <div class="hud-panel">
-            <div class="hud-score player-score-box">
-              <span id="hud-player-score">0</span>
-            </div>
+          <div class="hud-side">
+            <div class="hud-score player-score-box"><span id="hud-player-score">0</span></div>
           </div>
         </div>
 
-        <!-- In-Game Action Bar (Touch & Quick Triggers) -->
+        <!-- Action bar -->
         <div id="action-bar" class="hidden">
-          <button id="btn-trigger-parry" class="action-btn parry-btn">
-            <span class="btn-key">SPACE / R-CLICK</span>
-            <span class="btn-name">PARRY</span>
+          <button id="btn-trigger-parry" class="action-btn parry-btn" type="button">
+            <i data-lucide="shield"></i>
+            <span class="btn-name">Parry</span>
+            <span class="btn-key">Space / R-click</span>
           </button>
-          <button id="btn-trigger-overdrive" class="action-btn overdrive-btn">
-            <span class="btn-key">KEY [E]</span>
-            <span class="btn-name">OVERDRIVE</span>
+          <button id="btn-trigger-overdrive" class="action-btn overdrive-btn" type="button">
+            <i data-lucide="zap"></i>
+            <span class="btn-name">Overdrive</span>
+            <span class="btn-key">Key E</span>
           </button>
         </div>
 
-        <!-- 2D Canvas -->
         <canvas id="gameCanvas" width="600" height="900"></canvas>
 
-        <!-- Title Screen -->
+        <!-- Title -->
         <div id="title-screen" class="overlay-screen">
+          <div class="rink-lines" aria-hidden="true"></div>
           <div class="title-box">
             <h1 class="game-title">OVERCLOCK</h1>
             <div class="tagline">Beat the machine that sees every shot coming</div>
-            <div class="version-badge">EXPANDED ARCADE & P2P MULTIPLAYER</div>
+            <div class="version-badge"><i data-lucide="swords"></i> Arcade &amp; P2P multiplayer</div>
           </div>
 
-          <!-- Quick Controls Help -->
-          <div class="controls-pill">
-            <span>🖱️ <b>Mouse / Touch:</b> Move Paddle</span>
-            <span>⚡ <b>Space / R-Click:</b> Perfect Parry</span>
-            <span>💥 <b>Key [E]:</b> Overdrive EMP Smash</span>
-          </div>
+          <ul class="controls-pill">
+            <li><i data-lucide="mouse-pointer-2"></i><span><b>Mouse / touch</b> move paddle</span></li>
+            <li><i data-lucide="shield"></i><span><b>Space / right-click</b> perfect parry</span></li>
+            <li><i data-lucide="zap"></i><span><b>E</b> overdrive EMP smash</span></li>
+          </ul>
 
-          <!-- Main Actions -->
-          <div style="display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px;">
-            <button id="btn-play-boss" class="btn-primary" style="margin-bottom: 0;">ARCADE LADDER</button>
-            <button id="btn-open-multiplayer" class="btn-secondary" style="border-color: var(--cyan-glow); color: var(--cyan-glow); font-size: 0.95rem;">🌐 ONLINE 1v1 (CROSS-DEVICE)</button>
-            <div style="display: flex; gap: 8px; justify-content: center;">
-              <button id="btn-shop" class="btn-secondary" style="flex: 1;">SHOP</button>
-              <button id="btn-stats" class="btn-secondary" style="flex: 1;">RECORD</button>
-              <button id="btn-settings" class="btn-secondary" style="flex: 1;">SETTINGS</button>
+          <div class="menu-stack">
+            <button id="btn-play-boss" class="btn-primary" type="button"><i data-lucide="play"></i> Arcade ladder</button>
+            <button id="btn-open-multiplayer" class="btn-secondary btn-online" type="button"><i data-lucide="globe"></i> Online 1v1</button>
+            <div class="menu-row">
+              <button id="btn-shop" class="btn-secondary" type="button"><i data-lucide="shopping-bag"></i> Shop</button>
+              <button id="btn-stats" class="btn-secondary" type="button"><i data-lucide="bar-chart-3"></i> Record</button>
+              <button id="btn-settings" class="btn-secondary" type="button"><i data-lucide="settings"></i> Settings</button>
             </div>
           </div>
         </div>
 
-        <!-- Boss Ladder Selection Modal -->
+        <!-- Boss ladder -->
         <div id="boss-modal" class="overlay-screen hidden">
+          <button id="btn-boss-close" class="btn-secondary boss-back-btn" type="button"><i data-lucide="arrow-left"></i> Back</button>
           <div class="modal-card wide-modal">
-            <h3 class="modal-header">ARCADE BOSS LADDER</h3>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
-              Defeat each machine to unlock the next opponent in the cyber gauntlet.
-            </p>
+            <h3 class="modal-header"><i data-lucide="swords"></i> Arcade boss ladder</h3>
+            <p class="modal-note">Defeat each machine to unlock the next opponent.</p>
 
-            <!-- Series Format Selector -->
             <div class="format-selection-box">
-              <span class="format-label">SERIES FORMAT:</span>
+              <span class="format-label">Series format</span>
               <div class="format-btn-group">
-                <button class="format-btn active" data-format="BO1">BEST OF 1</button>
-                <button class="format-btn" data-format="BO3">BEST OF 3</button>
-                <button class="format-btn" data-format="BO5">BEST OF 5</button>
-                <button class="format-btn" data-format="FIRST_TO_3">BLITZ (3 PTS)</button>
+                <button class="format-btn active" data-format="BO1" type="button">Best of 1</button>
+                <button class="format-btn" data-format="BO3" type="button">Best of 3</button>
+                <button class="format-btn" data-format="BO5" type="button">Best of 5</button>
+                <button class="format-btn" data-format="FIRST_TO_3" type="button">Blitz (3 pts)</button>
               </div>
             </div>
 
-            <div id="boss-cards-grid" class="boss-grid">
-              <!-- Rendered dynamically -->
-            </div>
-            <button id="btn-boss-close" class="btn-secondary" style="width: 100%; margin-top: 16px;">BACK TO MENU</button>
+            <div id="boss-cards-grid" class="boss-grid"></div>
           </div>
         </div>
 
-        <!-- Cross-Device Multiplayer Modal -->
+        <!-- Multiplayer -->
         <div id="multiplayer-modal" class="overlay-screen hidden">
           <div class="modal-card">
-            <h3 class="modal-header">ONLINE 1v1 (CROSS-DEVICE)</h3>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 18px;">
-              Play against a friend on their own phone, tablet, or laptop. No accounts or downloads needed.
-            </p>
+            <h3 class="modal-header"><i data-lucide="globe"></i> Online 1v1</h3>
+            <p class="modal-note">Play a friend on their own phone, tablet or laptop. No accounts or downloads.</p>
 
-            <!-- Host Option -->
             <div class="net-section">
-              <span class="net-title">OPTION A: HOST A ROOM</span>
-              <button id="btn-host-room" class="btn-primary" style="width: 100%; font-size: 1rem; padding: 12px;">CREATE ROOM CODE</button>
+              <span class="net-title"><i data-lucide="radio-tower"></i> Host a room</span>
+              <button id="btn-host-room" class="btn-primary btn-block btn-sm" type="button"><i data-lucide="plus"></i> Create room code</button>
               <div id="host-code-display" class="room-code-box hidden">
-                <span style="font-size: 0.75rem; color: var(--text-muted);">SHARE THIS CODE WITH YOUR FRIEND:</span>
+                <span class="muted-sm">Share this code with your friend</span>
                 <span id="room-code-text" class="room-code-num">OC-7482</span>
-                <button id="btn-copy-code" class="btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;">COPY CODE</button>
-                <div id="host-waiting-status" style="font-size: 0.8rem; color: var(--amber-warn); margin-top: 8px;">⏳ Waiting for friend to connect...</div>
+                <button id="btn-copy-code" class="btn-secondary btn-xs" type="button"><i data-lucide="copy"></i> Copy code</button>
+                <div id="host-waiting-status" class="status-warn"><i data-lucide="loader-2" class="spin"></i> Waiting for friend to connect...</div>
               </div>
             </div>
 
-            <!-- Join Option -->
-            <div class="net-section" style="margin-top: 16px;">
-              <span class="net-title">OPTION B: JOIN WITH ROOM CODE</span>
-              <div style="display: flex; gap: 8px; margin-top: 8px;">
-                <input type="text" id="input-room-code" placeholder="ENTER CODE (e.g. OC-1234)" class="net-input" />
-                <button id="btn-join-room" class="btn-secondary" style="background: var(--cyan-glow); color: #000; font-weight: 800;">JOIN</button>
+            <div class="net-section">
+              <span class="net-title"><i data-lucide="log-in"></i> Join with a code</span>
+              <div class="join-row">
+                <input type="text" id="input-room-code" placeholder="OC-1234" class="net-input" autocomplete="off" />
+                <button id="btn-join-room" class="btn-join" type="button">Join</button>
               </div>
-              <div id="join-status-msg" style="font-size: 0.8rem; color: var(--cyan-glow); margin-top: 6px;"></div>
+              <div id="join-status-msg" class="join-status"></div>
             </div>
 
-            <button id="btn-multiplayer-close" class="btn-secondary" style="width: 100%; margin-top: 16px;">BACK</button>
+            <button id="btn-multiplayer-close" class="btn-secondary btn-block" type="button"><i data-lucide="arrow-left"></i> Back</button>
           </div>
         </div>
 
-        <!-- Holo-Shop Customization Modal -->
+        <!-- Shop -->
         <div id="shop-modal" class="overlay-screen hidden">
           <div class="modal-card wide-modal">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <h3 class="modal-header" style="margin-bottom: 0;">HOLO-SHOP</h3>
-              <div class="chips-badge">
-                <span>⚡</span>
-                <span id="shop-chips-count">100</span>
-                <span>CHIPS</span>
-              </div>
+            <div class="modal-top">
+              <h3 class="modal-header"><i data-lucide="shopping-bag"></i> Holo-shop</h3>
+              <div class="chips-badge"><i data-lucide="cpu"></i><span id="shop-chips-count">100</span><span>chips</span></div>
             </div>
 
-            <!-- Categories Tabs -->
             <div class="tab-row">
-              <button id="tab-paddle" class="tab-btn active">STRIKER SKINS</button>
-              <button id="tab-trail" class="tab-btn">PUCK TRAILS</button>
-              <button id="tab-goal" class="tab-btn">GOAL FX</button>
+              <button id="tab-paddle" class="tab-btn active" type="button"><i data-lucide="circle-dot"></i> Striker skins</button>
+              <button id="tab-trail" class="tab-btn" type="button"><i data-lucide="wind"></i> Puck trails</button>
+              <button id="tab-goal" class="tab-btn" type="button"><i data-lucide="sparkles"></i> Goal FX</button>
             </div>
 
-            <!-- Shop Items Grid -->
-            <div id="shop-items-grid" class="shop-grid">
-              <!-- Rendered dynamically -->
-            </div>
-
-            <button id="btn-shop-close" class="btn-secondary" style="width: 100%; margin-top: 18px;">CLOSE SHOP</button>
+            <div id="shop-items-grid" class="shop-grid"></div>
+            <button id="btn-shop-close" class="btn-secondary btn-block" type="button"><i data-lucide="x"></i> Close shop</button>
           </div>
         </div>
 
-        <!-- Result Screen -->
+        <!-- Result -->
         <div id="result-screen" class="overlay-screen hidden">
           <div class="result-box">
             <h2 id="result-title" class="result-title defeat">DEFEAT</h2>
             <div class="score-comparison">
-              <span id="res-player-score" style="color: var(--cyan-glow);">5</span>
-              <span style="color: var(--text-muted); font-size: 2rem;">-</span>
-              <span id="res-robot-score" style="color: var(--crimson-glow);">7</span>
+              <span id="res-player-score" class="sc-player">5</span>
+              <span class="sc-dash">-</span>
+              <span id="res-robot-score" class="sc-robot">7</span>
             </div>
 
-            <!-- Series Result Banner -->
-            <div id="res-series-summary" class="chips-earned-pill hidden" style="background: rgba(0, 240, 255, 0.15); border-color: var(--cyan-glow); color: var(--cyan-glow);">
-              SERIES: 2 - 1 (BEST OF 3)
+            <div id="res-series-summary" class="chips-earned-pill series-pill hidden">
+              <i data-lucide="trophy"></i> SERIES: 2 - 1 (BEST OF 3)
             </div>
-
-            <!-- Chips Award Banner -->
             <div id="result-chips-earned" class="chips-earned-pill">
-              +60 OVERCLOCK CHIPS EARNED
+              <i data-lucide="cpu"></i> +60 overclock chips earned
             </div>
 
-            <!-- Insight Line -->
             <div class="insight-card">
-              <div class="insight-label">TACTICAL DEBRIEF</div>
+              <div class="insight-label"><i data-lucide="lightbulb"></i> Tactical debrief</div>
               <div id="insight-text" class="insight-text">
                 The robot calculates direct shots. Use angled bank-shots to exploit its reaction delay.
               </div>
             </div>
 
-            <!-- Match Stats Breakdown -->
             <div class="match-stats-row">
-              <div class="stat-item">
-                <span id="stat-max-speed" class="stat-val">1,420</span>
-                <span class="stat-lbl">Top Speed</span>
-              </div>
-              <div class="stat-item">
-                <span id="stat-max-clock" class="stat-val">4.5 GHz</span>
-                <span class="stat-lbl">Peak Clock</span>
-              </div>
-              <div class="stat-item">
-                <span id="stat-parries" class="stat-val">3</span>
-                <span class="stat-lbl">Parries</span>
-              </div>
-              <div class="stat-item">
-                <span id="stat-total-hits" class="stat-val">34</span>
-                <span class="stat-lbl">Rallies</span>
-              </div>
+              <div class="stat-item"><i data-lucide="gauge"></i><span id="stat-max-speed" class="stat-val">1,420</span><span class="stat-lbl">Top speed</span></div>
+              <div class="stat-item"><i data-lucide="activity"></i><span id="stat-max-clock" class="stat-val">4.5 GHz</span><span class="stat-lbl">Peak clock</span></div>
+              <div class="stat-item"><i data-lucide="shield"></i><span id="stat-parries" class="stat-val">3</span><span class="stat-lbl">Parries</span></div>
+              <div class="stat-item"><i data-lucide="repeat"></i><span id="stat-total-hits" class="stat-val">34</span><span class="stat-lbl">Rallies</span></div>
             </div>
 
-            <button id="btn-next-boss" class="btn-primary" style="background: linear-gradient(135deg, #00ff88, #00b4d8); width: 100%; margin-top: 8px;">NEXT BOSS →</button>
-            <button id="btn-rematch" class="btn-primary" style="width: 100%; margin-top: 4px;">REMATCH</button>
-            <button id="btn-result-menu" class="btn-secondary" style="width: 100%;">MAIN MENU</button>
+            <button id="btn-next-boss" class="btn-primary btn-block btn-win" type="button">Next boss <i data-lucide="chevron-right"></i></button>
+            <button id="btn-rematch" class="btn-primary btn-block" type="button"><i data-lucide="rotate-ccw"></i> Rematch</button>
+            <button id="btn-result-menu" class="btn-secondary btn-block" type="button"><i data-lucide="house"></i> Main menu</button>
           </div>
         </div>
 
-        <!-- Pause Screen -->
+        <!-- Pause -->
         <div id="pause-screen" class="overlay-screen hidden">
           <div class="modal-card">
-            <h3 class="modal-header">PAUSED</h3>
-            <button id="btn-resume" class="btn-primary" style="width: 100%;">RESUME</button>
-            <button id="btn-restart" class="btn-secondary" style="width: 100%;">RESTART MATCH</button>
-            <button id="btn-pause-menu" class="btn-secondary" style="width: 100%;">EXIT TO MENU</button>
+            <h3 class="modal-header"><i data-lucide="pause"></i> Paused</h3>
+            <button id="btn-resume" class="btn-primary btn-block" type="button"><i data-lucide="play"></i> Resume</button>
+            <button id="btn-restart" class="btn-secondary btn-block" type="button"><i data-lucide="rotate-ccw"></i> Restart match</button>
+            <button id="btn-pause-menu" class="btn-secondary btn-block" type="button"><i data-lucide="log-out"></i> Exit to menu</button>
           </div>
         </div>
 
-        <!-- Settings Modal -->
+        <!-- Settings -->
         <div id="settings-modal" class="overlay-screen hidden">
           <div class="modal-card">
-            <h3 class="modal-header">SETTINGS</h3>
+            <h3 class="modal-header"><i data-lucide="settings"></i> Settings</h3>
             <div class="setting-row">
-              <span class="setting-label">Sound Effects</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="setting-sound" checked />
-                <span class="slider"></span>
-              </label>
+              <span class="setting-label"><i data-lucide="volume-2"></i> Sound effects</span>
+              <label class="toggle-switch"><input type="checkbox" id="setting-sound" checked /><span class="slider"></span></label>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Music & Drones</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="setting-music" checked />
-                <span class="slider"></span>
-              </label>
+              <span class="setting-label"><i data-lucide="music"></i> Music &amp; drones</span>
+              <label class="toggle-switch"><input type="checkbox" id="setting-music" checked /><span class="slider"></span></label>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Multi-Puck Overload (Arcade)</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="setting-multipuck" />
-                <span class="slider"></span>
-              </label>
+              <span class="setting-label"><i data-lucide="layers"></i> Multi-puck overload (arcade)</span>
+              <label class="toggle-switch"><input type="checkbox" id="setting-multipuck" /><span class="slider"></span></label>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Robot Laser Tell</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="setting-laser" checked />
-                <span class="slider"></span>
-              </label>
+              <span class="setting-label"><i data-lucide="crosshair"></i> Robot laser tell</span>
+              <label class="toggle-switch"><input type="checkbox" id="setting-laser" checked /><span class="slider"></span></label>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Haptic Vibration</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="setting-vibration" checked />
-                <span class="slider"></span>
-              </label>
+              <span class="setting-label"><i data-lucide="vibrate"></i> Haptic vibration</span>
+              <label class="toggle-switch"><input type="checkbox" id="setting-vibration" checked /><span class="slider"></span></label>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Reduce Motion (No Shake)</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="setting-reduce-motion" />
-                <span class="slider"></span>
-              </label>
+              <span class="setting-label"><i data-lucide="eye-off"></i> Reduce motion (no shake)</span>
+              <label class="toggle-switch"><input type="checkbox" id="setting-reduce-motion" /><span class="slider"></span></label>
             </div>
-            <button id="btn-settings-close" class="btn-secondary" style="width: 100%; margin-top: 18px;">CLOSE</button>
+            <button id="btn-settings-close" class="btn-secondary btn-block" type="button"><i data-lucide="x"></i> Close</button>
           </div>
         </div>
 
-        <!-- Lifetime Stats Modal -->
+        <!-- Career record -->
         <div id="stats-modal" class="overlay-screen hidden">
           <div class="modal-card">
-            <h3 class="modal-header">CAREER RECORD</h3>
-            <div class="setting-row">
-              <span class="setting-label">Matches Played</span>
-              <span id="stat-career-played" style="font-weight: 700; color: #fff;">0</span>
-            </div>
-            <div class="setting-row">
-              <span class="setting-label">Win Rate</span>
-              <span id="stat-career-winrate" style="font-weight: 700; color: var(--cyan-glow);">0%</span>
-            </div>
-            <div class="setting-row">
-              <span class="setting-label">Total Parries</span>
-              <span id="stat-career-parries" style="font-weight: 700; color: #ffd166;">0</span>
-            </div>
-            <div class="setting-row">
-              <span class="setting-label">Best Streak</span>
-              <span id="stat-career-streak" style="font-weight: 700; color: #fff;">0</span>
-            </div>
-            <div class="setting-row">
-              <span class="setting-label">Fastest Win</span>
-              <span id="stat-career-fastest" style="font-weight: 700; color: #fff;">--</span>
-            </div>
-            <div class="setting-row">
-              <span class="setting-label">Bosses Defeated</span>
-              <span id="stat-career-bosses" style="font-weight: 700; color: var(--crimson-glow);">0 / 5</span>
-            </div>
-            <button id="btn-stats-close" class="btn-secondary" style="width: 100%; margin-top: 18px;">CLOSE</button>
+            <h3 class="modal-header"><i data-lucide="bar-chart-3"></i> Career record</h3>
+            <div class="setting-row"><span class="setting-label"><i data-lucide="gamepad-2"></i> Matches played</span><span id="stat-career-played" class="rec-val">0</span></div>
+            <div class="setting-row"><span class="setting-label"><i data-lucide="percent"></i> Win rate</span><span id="stat-career-winrate" class="rec-val rec-ice">0%</span></div>
+            <div class="setting-row"><span class="setting-label"><i data-lucide="shield"></i> Total parries</span><span id="stat-career-parries" class="rec-val rec-gold">0</span></div>
+            <div class="setting-row"><span class="setting-label"><i data-lucide="flame"></i> Best streak</span><span id="stat-career-streak" class="rec-val">0</span></div>
+            <div class="setting-row"><span class="setting-label"><i data-lucide="timer"></i> Fastest win</span><span id="stat-career-fastest" class="rec-val">--</span></div>
+            <div class="setting-row"><span class="setting-label"><i data-lucide="skull"></i> Bosses defeated</span><span id="stat-career-bosses" class="rec-val rec-heat">0 / 5</span></div>
+            <button id="btn-stats-close" class="btn-secondary btn-block" type="button"><i data-lucide="x"></i> Close</button>
           </div>
         </div>
+
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

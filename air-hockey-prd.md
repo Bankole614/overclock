@@ -1,8 +1,8 @@
 # PRD: Overclock (working title)
 
-**Type:** Browser game, single-player (vs. robot)
-**Stack (proposed):** TypeScript, Vite, Canvas 2D, Web Audio API
-**Status:** Draft v1
+**Type:** Browser game: solo boss ladder (vs. robot) and cross-device online 1v1
+**Stack:** TypeScript, Vite, Canvas 2D, Web Audio API, PeerJS (WebRTC P2P, no backend)
+**Status:** v2 (reflects as-built implementation)
 **Owner:** AY
 
 ---
@@ -34,11 +34,12 @@ The game is openly sold as "you're up against a machine built to beat you." The 
 5. Locked 60 FPS on mid-range phones and laptops; physics deterministic at fixed timestep.
 6. Every loss should teach the player something (a visible reason they lost).
 
-### 2.2 Non-Goals (v1)
-- Online multiplayer or matchmaking (see Future).
-- Accounts, backend, or cloud saves. Local storage only.
-- Multiple tables, paddle skins with gameplay effects, or power-ups.
-- Monetization.
+### 2.2 Non-Goals
+- Matchmaking, accounts, backend servers, or cloud saves. Local storage only; online play is direct room-code P2P.
+- Same-screen / same-keyboard local multiplayer (explicitly rejected).
+- Multiple tables, center obstacles/bumpers (removed; the table stays regulation-clean).
+- Gameplay-affecting cosmetics or power-ups that change scoring.
+- Real-money monetization. The Holo-Shop uses only in-game "Overclock Chips" earned by playing.
 
 ---
 
@@ -62,8 +63,20 @@ The game is openly sold as "you're up against a machine built to beat you." The 
 
 ## 5. Core Gameplay
 
-### 5.1 Match rules
-- First to **7** points wins. Optional hard cap of 3 minutes: if time expires, higher score wins; a tie goes to sudden-death next point.
+### 5.1 Match rules (follow real-world regulation air hockey)
+- **1 goal = exactly 1 point**, always. No multi-point goals (the former 2-point Golden Puck was removed).
+- First to **7** points wins a game. The table is clean: no center obstacles.
+- Single puck by default. The optional "Multi-Puck Overload" arcade toggle (off by default) adds a second puck at 6-6.
+- **Series formats** (selected before a boss match):
+
+| Format | Win condition |
+|---|---|
+| Best of 1 | 1 game of 7 points |
+| Best of 3 | First to 2 games |
+| Best of 5 | First to 3 games |
+| Blitz | Single game to 3 points |
+
+- Between games in a series the point score resets to 0-0 and a banner shows the series score (e.g. "GAME 1 TO PLAYER! [1 - 0]").
 - Puck is served from center toward the player who just conceded (first serve is random).
 - Goal is scored when the puck's center fully crosses the goal line within the goal mouth.
 - Player defends the **bottom**, robot defends the **top**.
@@ -94,13 +107,20 @@ Notes:
 - **Keyboard (accessibility, optional):** arrow keys / WASD.
 - Pause with Esc / on-screen button.
 
+### 5.3a Kinetic mechanics (Overclock identity)
+- **Clock speed:** each rally hit raises a GHz meter (1.0 to 5.5) that raises the puck speed cap; resets on each goal.
+- **Perfect Parry:** a well-timed parry reflects the puck, grants hit-stop and Overdrive charge.
+- **Spin / curve shots:** Magnus-effect spin from paddle tangential motion curves the puck.
+- **Overdrive:** a charged ability (EMP stun on the robot plus a railgun shot).
+- **Boss phases:** robots change behavior as the score progresses (up to REDLINE).
+
 ### 5.4 Game flow
-1. **Title screen:** logo, "Play" button, settings (sound, vibration, reduced motion). One tap to start.
+1. **Title screen:** Boss Ladder, Online 1v1, Holo-Shop, Stats, Settings.
 2. **Pre-match:** 3-2-1 countdown with the robot's tracking UI "booting."
 3. **Match:** gameplay with HUD.
 4. **Point scored:** brief slow-motion and robot/player reaction; serve resumes after ~1.2 s.
-5. **Match end:** result screen with score, a short "why you lost / how you won" insight, and a big **Rematch** button.
-6. Rematch starts instantly. Menu and settings are secondary.
+5. **Match end:** result screen with score, series result, chips earned, a short insight, and buttons: **Next Level** (only after beating a boss that has a successor), **Rematch**, **Main Menu**.
+6. Rematch and Next Level start instantly with no menu detour; the chosen series format carries over.
 
 ---
 
@@ -197,7 +217,7 @@ Logical table is a fixed 600x900 coordinate space, scaled to fit the viewport wi
 
 ### 8.4 Performance budget
 - 60 FPS on mid-range mobile (target: iPhone 11 / Pixel 6 class).
-- Under 150 KB gzipped JS, no runtime dependencies beyond the bundler.
+- Under 150 KB gzipped JS (currently ~45 KB); PeerJS is the only runtime dependency.
 - No allocations in the hot loop (reuse vectors, particle pool).
 
 ### 8.5 Testing
@@ -207,11 +227,13 @@ Logical table is a fixed 600x900 coordinate space, scaled to fit the viewport wi
 
 ---
 
-## 9. Progression and Retention (lightweight)
+## 9. Progression and Retention
 
-- Local stats: matches played, win rate, best streak, fastest win.
-- Optional **"Robot Mark" levels** (cosmetic labels like Mk I, Mk II) tied to the player's win count, giving a sense of climbing against the same machine. Does not change real difficulty beyond the director.
-- Daily "challenge" variants are out of scope for v1.
+- Local stats: matches played, win rate, best streak, fastest win, bosses defeated.
+- **Boss Ladder:** MK-I VECTOR (baseline), MK-II VIPER (curve/bank shots), MK-III TITAN (huge paddle, heavy), MK-IV PHANTOM (fast, decoy reticles), MK-V APEX PRIME (permanent redline, counter-parry). Defeating a boss unlocks the next; "Next Level" continues straight into it.
+- **Holo-Shop:** Overclock Chips (earned from goals, parries, wins) buy cosmetic-only paddle skins, puck trails, and goal effects.
+- **Online 1v1:** host creates a 4-digit room code; the guest joins from another device via WebRTC (PeerJS). Host is authoritative, state syncs at 60 Hz, guest view is mirrored so each player defends the bottom.
+- Daily "challenge" variants remain out of scope.
 
 ---
 
@@ -268,11 +290,11 @@ Primary use: validate the win-rate band and rematch rate. Provide an opt-out tog
 
 ## 14. Future (post-v1)
 
-- Online 1v1 with the same physics core (deterministic, rollback-friendly).
-- Multiple robot "personalities" (defensive, aggressive, tricky) with distinct weaknesses.
-- Tournament ladder against a series of robots.
-- Power-ups mode as an optional variant.
+- Online play: series formats (Bo3/Bo5) and rematch in multiplayer; rollback netcode; optional signaling server for reliability.
+- Online leaderboards and cloud-saved progression.
+- Optional power-ups mode as a clearly separate variant (not the default rule set).
 - Replay sharing (short GIF/video clip of the best goal).
+- Landscape-native layout.
 
 ---
 
@@ -281,5 +303,5 @@ Primary use: validate the win-rate band and rematch rate. Provide an opt-out tog
 1. Final name and visual identity (Overclock is a placeholder).
 2. Vertical-only table, or support a landscape-native layout?
 3. Should the tracking line be on by default, or earned/unlocked?
-4. Is a 3-minute match cap worth it, or is first-to-7 enough?
+4. ~~Is a 3-minute match cap worth it?~~ Resolved: no cap; first-to-7 per game, with series formats.
 5. Include analytics at all in v1, or ship clean and add later?
