@@ -1,0 +1,97 @@
+export interface Vec2 {
+  x: number;
+  y: number;
+}
+
+export interface Puck {
+  pos: Vec2;
+  vel: Vec2;
+  radius: number;
+  trail: { x: number; y: number; speed: number; alpha: number }[];
+  lastHitter: 'player' | 'robot' | null;
+  hitCount: number;
+}
+
+export interface Paddle {
+  pos: Vec2;
+  vel: Vec2;
+  prevPos: Vec2;
+  radius: number;
+  color: string;
+  glowColor: string;
+}
+
+export interface TableConfig {
+  width: number;
+  height: number;
+  goalWidth: number;
+  goalDepth: number;
+  puckRadius: number;
+  paddleRadius: number;
+  puckMaxSpeed: number;
+  wallRestitution: number;
+  puckDrag: number;
+  postRadius: number;
+}
+
+export const DEFAULT_TABLE: TableConfig = {
+  width: 600,
+  height: 900,
+  goalWidth: 220,
+  goalDepth: 30,
+  puckRadius: 18,
+  paddleRadius: 34,
+  puckMaxSpeed: 1800,
+  wallRestitution: 0.96,
+  puckDrag: 0.12,
+  postRadius: 10,
+};
+
+export type GameState =
+  | 'TITLE'
+  | 'COUNTDOWN'
+  | 'PLAYING'
+  | 'POINT_SCORED'
+  | 'MATCH_END'
+  | 'PAUSED';
+
+export interface Score {
+  player: number;
+  robot: number;
+}
+
+export interface GameSettings {
+  soundEnabled: boolean;
+  musicEnabled: boolean;
+  masterVolume: number;
+  sfxVolume: number;
+  musicVolume: number;
+  reduceMotion: boolean;
+  vibration: boolean;
+  showPredictionLine: boolean;
+}
+
+export interface MatchStats {
+  durationSeconds: number;
+  playerScore: number;
+  robotScore: number;
+  maxPuckSpeed: number;
+  totalHits: number;
+  playerHits: number;
+  robotHits: number;
+  overcommitGoals: number;
+  reboundGoals: number;
+  crossTableGoals: number;
+  ralliesOver5Hits: number;
+  winner: 'player' | 'robot' | null;
+}
+
+export interface LifetimeStats {
+  matchesPlayed: number;
+  matchesWon: number;
+  bestStreak: number;
+  currentStreak: number;
+  fastestWinSeconds: number | null;
+  totalPointsScored: number;
+  totalPointsConceded: number;
+}

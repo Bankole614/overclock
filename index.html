@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>OVERCLOCK // Beat the Machine</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="game-container">
+        <!-- Top HUD -->
+        <div id="hud" class="hidden">
+          <div class="hud-panel">
+            <div class="hud-score robot-score-box">
+              <span id="hud-robot-score">0</span>
+            </div>
+            <span id="hud-robot-badge" style="font-size: 0.75rem; color: #ff2a6d; font-weight: bold; letter-spacing: 1px;">MK-I PROTO</span>
+          </div>
+          <button id="btn-pause-toggle" class="hud-btn">PAUSE</button>
+          <div class="hud-panel">
+            <div class="hud-score player-score-box">
+              <span id="hud-player-score">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2D Canvas -->
+        <canvas id="gameCanvas" width="600" height="900"></canvas>
+
+        <!-- Title Screen -->
+        <div id="title-screen" class="overlay-screen">
+          <div class="title-box">
+            <h1 class="game-title">OVERCLOCK</h1>
+            <div class="tagline">Beat the machine that sees every shot coming</div>
+            <div class="version-badge">CYBER AIR HOCKEY v1.0</div>
+          </div>
+          <button id="btn-play" class="btn-primary">PLAY MATCH</button>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-stats" class="btn-secondary">RECORD</button>
+            <button id="btn-settings" class="btn-secondary">SETTINGS</button>
+          </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="overlay-screen hidden">
+          <div class="result-box">
+            <h2 id="result-title" class="result-title defeat">DEFEAT</h2>
+            <div class="score-comparison">
+              <span id="res-player-score" style="color: var(--cyan-glow);">5</span>
+              <span style="color: var(--text-muted); font-size: 2rem;">-</span>
+              <span id="res-robot-score" style="color: var(--crimson-glow);">7</span>
+            </div>
+
+            <!-- Insight Line -->
+            <div class="insight-card">
+              <div class="insight-label">TACTICAL DEBRIEF</div>
+              <div id="insight-text" class="insight-text">
+                The robot calculates every direct shot. Use angled bank-shots to exploit its reaction delay.
+              </div>
+            </div>
+
+            <!-- Match Stats -->
+            <div class="match-stats-row">
+              <div class="stat-item">
+                <span id="stat-max-speed" class="stat-val">1,420</span>
+                <span class="stat-lbl">Top Speed</span>
+              </div>
+              <div class="stat-item">
+                <span id="stat-total-hits" class="stat-val">34</span>
+                <span class="stat-lbl">Rally Hits</span>
+              </div>
+              <div class="stat-item">
+                <span id="stat-exploits" class="stat-val">2</span>
+                <span class="stat-lbl">Punishes</span>
+              </div>
+            </div>
+
+            <!-- Rematch Action -->
+            <button id="btn-rematch" class="btn-primary" style="width: 100%; margin-top: 8px;">REMATCH</button>
+            <button id="btn-result-menu" class="btn-secondary" style="width: 100%;">MAIN MENU</button>
+          </div>
+        </div>
+
+        <!-- Pause Screen -->
+        <div id="pause-screen" class="overlay-screen hidden">
+          <div class="modal-card">
+            <h3 class="modal-header">PAUSED</h3>
+            <button id="btn-resume" class="btn-primary" style="width: 100%;">RESUME</button>
+            <button id="btn-restart" class="btn-secondary" style="width: 100%;">RESTART MATCH</button>
+            <button id="btn-pause-menu" class="btn-secondary" style="width: 100%;">EXIT TO MENU</button>
+          </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="overlay-screen hidden">
+          <div class="modal-card">
+            <h3 class="modal-header">SETTINGS</h3>
+            <div class="setting-row">
+              <span class="setting-label">Sound Effects</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-sound" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Music & Drone</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-music" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Robot Laser Tell</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-laser" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Haptic Vibration</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-vibration" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Reduce Motion (No Shake)</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-reduce-motion" />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <button id="btn-settings-close" class="btn-secondary" style="width: 100%; margin-top: 18px;">CLOSE</button>
+          </div>
+        </div>
+
+        <!-- Lifetime Stats Modal -->
+        <div id="stats-modal" class="overlay-screen hidden">
+          <div class="modal-card">
+            <h3 class="modal-header">CAREER RECORD</h3>
+            <div class="setting-row">
+              <span class="setting-label">Matches Played</span>
+              <span id="stat-career-played" style="font-weight: 700; color: #fff;">0</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Win Rate</span>
+              <span id="stat-career-winrate" style="font-weight: 700; color: var(--cyan-glow);">0%</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Best Streak</span>
+              <span id="stat-career-streak" style="font-weight: 700; color: #fff;">0</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Fastest Win</span>
+              <span id="stat-career-fastest" style="font-weight: 700; color: #fff;">--</span>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Robot Tier</span>
+              <span id="stat-career-robot" style="font-weight: 700; color: var(--crimson-glow);">MK-I PROTO</span>
+            </div>
+            <button id="btn-stats-close" class="btn-secondary" style="width: 100%; margin-top: 18px;">CLOSE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
