@@ -30,15 +30,6 @@ export interface Paddle {
   stunTimer: number;
 }
 
-export interface ArenaBumper {
-  id: string;
-  pos: Vec2;
-  radius: number;
-  active: boolean;
-  pulseTimer: number;
-  color: string;
-}
-
 export interface TableConfig {
   width: number;
   height: number;
@@ -89,7 +80,6 @@ export interface GameSettings {
   reduceMotion: boolean;
   vibration: boolean;
   showPredictionLine: boolean;
-  arenaBumpers: boolean;
   curveShots: boolean;
 }
 

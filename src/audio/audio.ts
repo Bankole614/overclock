@@ -29,7 +29,6 @@ export class SoundEngine {
     reduceMotion: false,
     vibration: true,
     showPredictionLine: true,
-    arenaBumpers: true,
     curveShots: true,
   };
 

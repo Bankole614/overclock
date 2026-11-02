@@ -5,7 +5,6 @@ import {
   Paddle,
   Score,
   TableConfig,
-  ArenaBumper,
 } from '../types';
 import { PhysicsEngine } from '../physics';
 import { RobotAI } from '../ai/robotAI';
@@ -25,7 +24,6 @@ export class Game {
   public puck: Puck;
   public playerPaddle: Paddle;
   public robotPaddle: Paddle;
-  public bumpers: ArenaBumper[] = [];
 
   // Previous state for interpolation
   private prevState: RenderState;
@@ -80,26 +78,6 @@ export class Game {
     this.renderer = new GameRenderer(canvas, this.table, this.particles, settings);
     this.input = new InputManager(canvas, this.table);
     this.tracker = new MatchTracker();
-
-    // Arena Bumpers
-    this.bumpers = [
-      {
-        id: 'bumper_left',
-        pos: { x: 175, y: this.table.height / 2 },
-        radius: 26,
-        active: settings.arenaBumpers,
-        pulseTimer: 0,
-        color: '#ffb703',
-      },
-      {
-        id: 'bumper_right',
-        pos: { x: 425, y: this.table.height / 2 },
-        radius: 26,
-        active: settings.arenaBumpers,
-        pulseTimer: 0,
-        color: '#ffb703',
-      },
-    ];
 
     // Entities
     this.puck = {
@@ -384,21 +362,13 @@ export class Game {
     // 2. Update Robot AI
     this.robot.update(this.fixedDt, now, this.puck, this.robotPaddle);
 
-    // 3. Step Physics with Bumpers & Magnus curve
+    // 3. Step Physics with Magnus curve
     const { collisions, goal } = this.physics.update(
       this.fixedDt,
       this.puck,
       this.playerPaddle,
-      this.robotPaddle,
-      this.bumpers
+      this.robotPaddle
     );
-
-    // Update bumper pulse animations
-    for (const b of this.bumpers) {
-      if (b.pulseTimer > 0) {
-        b.pulseTimer -= this.fixedDt;
-      }
-    }
 
     // Process collisions
     for (const c of collisions) {
@@ -452,11 +422,6 @@ export class Game {
           this.robot.say(`OVERCLOCK: ${this.clockSpeedGHz.toFixed(1)} GHz!`, 1.5);
           this.sound.playRobotSpeech();
         }
-      } else if (c.type === 'bumper') {
-        this.sound.playBumper();
-        this.particles.emitShockwave(c.pos, 75, '#ffb703', 380);
-        this.particles.emitSparks(c.pos, 14, '#ffb703', 1.2, c.normal);
-        this.renderer.triggerShake(0.35, 0.15);
       } else if (c.type === 'wall') {
         this.tracker.onWallBounce();
         this.sound.playWallTick(c.speed);
@@ -566,7 +531,6 @@ export class Game {
       this.robot.phase,
       this.robot.currentDialogue,
       this.robot.prediction,
-      this.bumpers,
       this.clockSpeedGHz,
       this.score,
       this.countdownText,

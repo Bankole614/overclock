@@ -1,4 +1,4 @@
-import { TableConfig, Puck, Paddle, GameSettings, ArenaBumper, BossPhase } from '../types';
+import { TableConfig, Puck, Paddle, GameSettings, BossPhase } from '../types';
 import { ParticleSystem } from './particles';
 import { PredictionPath, RobotState } from '../ai/robotAI';
 
@@ -65,7 +65,6 @@ export class GameRenderer {
     robotPhase: BossPhase,
     robotDialogue: string | null,
     prediction: PredictionPath | null,
-    bumpers: ArenaBumper[],
     clockSpeedGHz: number,
     score: { player: number; robot: number },
     countdownText: string | null,
@@ -99,12 +98,7 @@ export class GameRenderer {
     // 1. Draw Arena Floor, Grid & Clock Speed Visuals
     this.drawArena(score, clockSpeedGHz, robotPhase);
 
-    // 2. Draw Quantum Arena Bumpers
-    if (this.settings.arenaBumpers) {
-      this.drawBumpers(bumpers);
-    }
-
-    // 3. Draw Robot Prediction Laser Line
+    // 2. Draw Robot Prediction Laser Line
     if (this.settings.showPredictionLine && prediction && robotState === 'TRACKING') {
       this.drawPrediction(prediction, robotPhase);
     }
@@ -268,35 +262,6 @@ export class GameRenderer {
 
     ctx.fillStyle = 'rgba(0, 240, 255, 0.08)';
     ctx.fillText(score.player.toString(), width / 2, (height * 3) / 4);
-  }
-
-  private drawBumpers(bumpers: ArenaBumper[]) {
-    const ctx = this.ctx;
-    for (const b of bumpers) {
-      if (!b.active) continue;
-      ctx.save();
-      const pulseScale = 1 + (b.pulseTimer > 0 ? b.pulseTimer * 0.4 : 0);
-
-      // Outer glow
-      ctx.beginPath();
-      ctx.arc(b.pos.x, b.pos.y, b.radius * pulseScale, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255, 183, 3, 0.15)';
-      ctx.fill();
-
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = b.pulseTimer > 0 ? '#ffffff' : b.color;
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = b.pulseTimer > 0 ? 25 : 12;
-      ctx.stroke();
-
-      // Inner Core
-      ctx.beginPath();
-      ctx.arc(b.pos.x, b.pos.y, b.radius * 0.4, 0, Math.PI * 2);
-      ctx.fillStyle = b.color;
-      ctx.fill();
-
-      ctx.restore();
-    }
   }
 
   private drawPost(x: number, y: number, r: number, color: string) {

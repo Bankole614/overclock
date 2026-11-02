@@ -1,7 +1,7 @@
-import { Puck, Paddle, TableConfig, Vec2, ArenaBumper } from './types';
+import { Puck, Paddle, TableConfig, Vec2 } from './types';
 
 export interface CollisionEvent {
-  type: 'wall' | 'paddle' | 'post' | 'bumper';
+  type: 'wall' | 'paddle' | 'post';
   target?: 'player' | 'robot';
   pos: Vec2;
   speed: number;
@@ -172,40 +172,6 @@ export class PhysicsEngine {
     return null;
   }
 
-  private checkBumperCollision(puck: Puck, bumper: ArenaBumper): CollisionEvent | null {
-    if (!bumper.active) return null;
-    const r = puck.radius + bumper.radius;
-    const dx = puck.pos.x - bumper.pos.x;
-    const dy = puck.pos.y - bumper.pos.y;
-    const distSq = dx * dx + dy * dy;
-
-    if (distSq < r * r) {
-      let dist = Math.sqrt(distSq);
-      if (dist === 0) dist = 0.001;
-      const nx = dx / dist;
-      const ny = dy / dist;
-
-      puck.pos.x = bumper.pos.x + nx * (r + 1);
-      puck.pos.y = bumper.pos.y + ny * (r + 1);
-
-      // Rebound with kinetic repulsion
-      const bounceSpeed = Math.max(800, Math.hypot(puck.vel.x, puck.vel.y) * 1.15);
-      puck.vel.x = nx * bounceSpeed;
-      puck.vel.y = ny * bounceSpeed;
-
-      bumper.pulseTimer = 0.35;
-      this.capSpeed(puck);
-
-      return {
-        type: 'bumper',
-        pos: { x: bumper.pos.x, y: bumper.pos.y },
-        speed: bounceSpeed,
-        normal: { x: nx, y: ny },
-      };
-    }
-    return null;
-  }
-
   private checkPostCollision(
     puck: Puck,
     postX: number,
@@ -256,8 +222,7 @@ export class PhysicsEngine {
     dt: number,
     puck: Puck,
     playerPaddle: Paddle,
-    robotPaddle: Paddle,
-    bumpers: ArenaBumper[] = []
+    robotPaddle: Paddle
   ): {
     collisions: CollisionEvent[];
     goal: 'player' | 'robot' | null;
@@ -307,15 +272,7 @@ export class PhysicsEngine {
       collisions.push(robotHit);
     }
 
-    // 5. Check Arena Bumpers
-    for (const b of bumpers) {
-      const bumperHit = this.checkBumperCollision(puck, b);
-      if (bumperHit) {
-        collisions.push(bumperHit);
-      }
-    }
-
-    // 6. Side wall collisions
+    // 5. Side wall collisions
     if (puck.pos.x - puck.radius < 0) {
       puck.pos.x = puck.radius;
       puck.vel.x = -puck.vel.x * wallRestitution;

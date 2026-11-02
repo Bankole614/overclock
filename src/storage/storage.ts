@@ -15,7 +15,6 @@ export class StorageManager {
       reduceMotion: false,
       vibration: true,
       showPredictionLine: true,
-      arenaBumpers: true,
       curveShots: true,
     };
 

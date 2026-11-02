@@ -49,7 +49,6 @@ window.addEventListener('DOMContentLoaded', () => {
   // Settings Toggles
   const toggleSound = document.getElementById('setting-sound') as HTMLInputElement;
   const toggleMusic = document.getElementById('setting-music') as HTMLInputElement;
-  const toggleBumpers = document.getElementById('setting-bumpers') as HTMLInputElement;
   const toggleLaser = document.getElementById('setting-laser') as HTMLInputElement;
   const toggleVibration = document.getElementById('setting-vibration') as HTMLInputElement;
   const toggleReduceMotion = document.getElementById('setting-reduce-motion') as HTMLInputElement;
@@ -66,7 +65,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const currentSettings = StorageManager.loadSettings();
   toggleSound.checked = currentSettings.soundEnabled;
   toggleMusic.checked = currentSettings.musicEnabled;
-  toggleBumpers.checked = currentSettings.arenaBumpers;
   toggleLaser.checked = currentSettings.showPredictionLine;
   toggleVibration.checked = currentSettings.vibration;
   toggleReduceMotion.checked = currentSettings.reduceMotion;
@@ -75,7 +73,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const updated = {
       soundEnabled: toggleSound.checked,
       musicEnabled: toggleMusic.checked,
-      arenaBumpers: toggleBumpers.checked,
       showPredictionLine: toggleLaser.checked,
       vibration: toggleVibration.checked,
       reduceMotion: toggleReduceMotion.checked,
@@ -83,10 +80,9 @@ window.addEventListener('DOMContentLoaded', () => {
     StorageManager.saveSettings({ ...currentSettings, ...updated });
     game.sound.updateSettings(updated);
     game.renderer.settings = { ...game.renderer.settings, ...updated };
-    game.bumpers.forEach((b) => (b.active = updated.arenaBumpers));
   };
 
-  [toggleSound, toggleMusic, toggleBumpers, toggleLaser, toggleVibration, toggleReduceMotion].forEach((input) => {
+  [toggleSound, toggleMusic, toggleLaser, toggleVibration, toggleReduceMotion].forEach((input) => {
     input.addEventListener('change', saveAndApplySettings);
   });
 
