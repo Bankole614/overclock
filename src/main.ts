@@ -1,5 +1,6 @@
 import { Game } from './game/game';
 import { StorageManager } from './storage/storage';
+import { SHOP_CATALOG } from './shop/shop';
 
 window.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -7,7 +8,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const game = new Game(canvas);
 
-  // DOM Elements
+  // HUD Elements
   const hud = document.getElementById('hud')!;
   const hudRobotScore = document.getElementById('hud-robot-score')!;
   const hudPlayerScore = document.getElementById('hud-player-score')!;
@@ -15,43 +16,54 @@ window.addEventListener('DOMContentLoaded', () => {
   const hudPhaseBadge = document.getElementById('hud-phase-badge')!;
   const actionBar = document.getElementById('action-bar')!;
 
+  // Modals & Screens
   const titleScreen = document.getElementById('title-screen')!;
   const resultScreen = document.getElementById('result-screen')!;
   const pauseScreen = document.getElementById('pause-screen')!;
   const settingsModal = document.getElementById('settings-modal')!;
   const statsModal = document.getElementById('stats-modal')!;
+  const bossModal = document.getElementById('boss-modal')!;
+  const multiplayerModal = document.getElementById('multiplayer-modal')!;
+  const shopModal = document.getElementById('shop-modal')!;
 
-  const btnPlay = document.getElementById('btn-play')!;
-  const btnRematch = document.getElementById('btn-rematch')!;
-  const btnResultMenu = document.getElementById('btn-result-menu')!;
+  // Title Buttons
+  const btnPlayBoss = document.getElementById('btn-play-boss')!;
+  const btnOpenMultiplayer = document.getElementById('btn-open-multiplayer')!;
+  const btnShop = document.getElementById('btn-shop')!;
+  const btnStats = document.getElementById('btn-stats')!;
+  const btnSettings = document.getElementById('btn-settings')!;
+
+  // In-Game Triggers
+  const btnTriggerParry = document.getElementById('btn-trigger-parry')!;
+  const btnTriggerOverdrive = document.getElementById('btn-trigger-overdrive')!;
   const btnPauseToggle = document.getElementById('btn-pause-toggle')!;
+
+  // Pause Screen Buttons
   const btnResume = document.getElementById('btn-resume')!;
   const btnRestart = document.getElementById('btn-restart')!;
   const btnPauseMenu = document.getElementById('btn-pause-menu')!;
-  const btnSettings = document.getElementById('btn-settings')!;
-  const btnSettingsClose = document.getElementById('btn-settings-close')!;
-  const btnStats = document.getElementById('btn-stats')!;
-  const btnStatsClose = document.getElementById('btn-stats-close')!;
-
-  const btnTriggerParry = document.getElementById('btn-trigger-parry')!;
-  const btnTriggerOverdrive = document.getElementById('btn-trigger-overdrive')!;
 
   // Result Elements
+  const btnRematch = document.getElementById('btn-rematch')!;
+  const btnResultMenu = document.getElementById('btn-result-menu')!;
   const resultTitle = document.getElementById('result-title')!;
   const resPlayerScore = document.getElementById('res-player-score')!;
   const resRobotScore = document.getElementById('res-robot-score')!;
+  const resultChipsEarned = document.getElementById('result-chips-earned')!;
   const insightText = document.getElementById('insight-text')!;
   const statMaxSpeed = document.getElementById('stat-max-speed')!;
   const statMaxClock = document.getElementById('stat-max-clock')!;
   const statParries = document.getElementById('stat-parries')!;
   const statTotalHits = document.getElementById('stat-total-hits')!;
 
-  // Settings Toggles
+  // Settings Elements
   const toggleSound = document.getElementById('setting-sound') as HTMLInputElement;
   const toggleMusic = document.getElementById('setting-music') as HTMLInputElement;
+  const toggleMultiPuck = document.getElementById('setting-multipuck') as HTMLInputElement;
   const toggleLaser = document.getElementById('setting-laser') as HTMLInputElement;
   const toggleVibration = document.getElementById('setting-vibration') as HTMLInputElement;
   const toggleReduceMotion = document.getElementById('setting-reduce-motion') as HTMLInputElement;
+  const btnSettingsClose = document.getElementById('btn-settings-close')!;
 
   // Career Stats Elements
   const statCareerPlayed = document.getElementById('stat-career-played')!;
@@ -59,12 +71,37 @@ window.addEventListener('DOMContentLoaded', () => {
   const statCareerParries = document.getElementById('stat-career-parries')!;
   const statCareerStreak = document.getElementById('stat-career-streak')!;
   const statCareerFastest = document.getElementById('stat-career-fastest')!;
-  const statCareerRobot = document.getElementById('stat-career-robot')!;
+  const statCareerBosses = document.getElementById('stat-career-bosses')!;
+  const btnStatsClose = document.getElementById('btn-stats-close')!;
 
-  // Sync settings
+  // Boss Modal Elements
+  const bossCardsGrid = document.getElementById('boss-cards-grid')!;
+  const btnBossClose = document.getElementById('btn-boss-close')!;
+
+  // Multiplayer Modal Elements
+  const btnHostRoom = document.getElementById('btn-host-room')!;
+  const hostCodeDisplay = document.getElementById('host-code-display')!;
+  const roomCodeText = document.getElementById('room-code-text')!;
+  const btnCopyCode = document.getElementById('btn-copy-code')!;
+  const inputRoomCode = document.getElementById('input-room-code') as HTMLInputElement;
+  const btnJoinRoom = document.getElementById('btn-join-room')!;
+  const joinStatusMsg = document.getElementById('join-status-msg')!;
+  const btnMultiplayerClose = document.getElementById('btn-multiplayer-close')!;
+
+  // Shop Elements
+  const shopChipsCount = document.getElementById('shop-chips-count')!;
+  const shopItemsGrid = document.getElementById('shop-items-grid')!;
+  const tabPaddle = document.getElementById('tab-paddle')!;
+  const tabTrail = document.getElementById('tab-trail')!;
+  const tabGoal = document.getElementById('tab-goal')!;
+  const btnShopClose = document.getElementById('btn-shop-close')!;
+  let currentShopCategory: 'paddle' | 'trail' | 'goal' = 'paddle';
+
+  // --- Settings Synchronization ---
   const currentSettings = StorageManager.loadSettings();
   toggleSound.checked = currentSettings.soundEnabled;
   toggleMusic.checked = currentSettings.musicEnabled;
+  toggleMultiPuck.checked = currentSettings.multiPuckOverload;
   toggleLaser.checked = currentSettings.showPredictionLine;
   toggleVibration.checked = currentSettings.vibration;
   toggleReduceMotion.checked = currentSettings.reduceMotion;
@@ -73,6 +110,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const updated = {
       soundEnabled: toggleSound.checked,
       musicEnabled: toggleMusic.checked,
+      multiPuckOverload: toggleMultiPuck.checked,
       showPredictionLine: toggleLaser.checked,
       vibration: toggleVibration.checked,
       reduceMotion: toggleReduceMotion.checked,
@@ -82,10 +120,11 @@ window.addEventListener('DOMContentLoaded', () => {
     game.renderer.settings = { ...game.renderer.settings, ...updated };
   };
 
-  [toggleSound, toggleMusic, toggleLaser, toggleVibration, toggleReduceMotion].forEach((input) => {
+  [toggleSound, toggleMusic, toggleMultiPuck, toggleLaser, toggleVibration, toggleReduceMotion].forEach((input) => {
     input.addEventListener('change', saveAndApplySettings);
   });
 
+  // --- Career Stats ---
   const updateCareerStatsUI = () => {
     const stats = StorageManager.loadStats();
     statCareerPlayed.textContent = stats.matchesPlayed.toString();
@@ -94,10 +133,161 @@ window.addEventListener('DOMContentLoaded', () => {
     statCareerParries.textContent = stats.totalParries.toString();
     statCareerStreak.textContent = stats.bestStreak.toString();
     statCareerFastest.textContent = stats.fastestWinSeconds ? `${stats.fastestWinSeconds}s` : '--';
-    statCareerRobot.textContent = game.director.getRobotModelName();
+
+    const defeatedCount = Object.values(game.bossManager.bosses).filter((b) => b.defeated).length;
+    statCareerBosses.textContent = `${defeatedCount} / 5`;
   };
 
-  // State Change Listeners
+  // --- Boss Ladder UI ---
+  const renderBossLadderUI = () => {
+    bossCardsGrid.innerHTML = '';
+    const bosses = Object.values(game.bossManager.bosses);
+
+    bosses.forEach((boss) => {
+      const card = document.createElement('div');
+      card.className = `boss-card ${boss.unlocked ? '' : 'locked'} ${boss.defeated ? 'defeated' : ''}`;
+
+      const avatarIcon = boss.id === 'VIPER' ? '🐍' : boss.id === 'TITAN' ? '🛡️' : boss.id === 'PHANTOM' ? '👻' : boss.id === 'APEX' ? '👑' : '🤖';
+
+      card.innerHTML = `
+        <div class="boss-avatar" style="border-color: ${boss.color}; color: ${boss.color};">
+          ${avatarIcon}
+        </div>
+        <div class="boss-info">
+          <div class="boss-name" style="color: ${boss.color};">
+            ${boss.name} ${boss.defeated ? '✓ DEFEATED' : ''}
+          </div>
+          <div class="boss-title">${boss.title}</div>
+          <div class="boss-signature">Signature: ${boss.signature}</div>
+        </div>
+        ${boss.unlocked ? '<span style="color: var(--cyan-glow); font-size: 0.8rem; font-weight: 800;">CHALLENGE →</span>' : '<span>🔒</span>'}
+      `;
+
+      if (boss.unlocked) {
+        card.addEventListener('click', () => {
+          bossModal.classList.add('hidden');
+          game.mode = 'SOLO_BOSS';
+          game.selectBoss(boss.id);
+        });
+      }
+
+      bossCardsGrid.appendChild(card);
+    });
+  };
+
+  // --- Shop UI ---
+  const renderShopUI = () => {
+    shopChipsCount.textContent = game.shopManager.state.chips.toString();
+    shopItemsGrid.innerHTML = '';
+
+    const items = SHOP_CATALOG.filter((i) => i.category === currentShopCategory);
+
+    items.forEach((item) => {
+      const isUnlocked = game.shopManager.state.unlockedItems.includes(item.id);
+      const isEquipped =
+        game.shopManager.state.equippedPaddle === item.id ||
+        game.shopManager.state.equippedTrail === item.id ||
+        game.shopManager.state.equippedGoal === item.id;
+
+      const card = document.createElement('div');
+      card.className = `shop-card ${isEquipped ? 'equipped' : ''}`;
+
+      let actionBtnText = 'BUY';
+      let actionBtnColor = 'var(--amber-warn)';
+      if (isEquipped) {
+        actionBtnText = 'EQUIPPED';
+        actionBtnColor = 'var(--emerald-viper)';
+      } else if (isUnlocked) {
+        actionBtnText = 'EQUIP';
+        actionBtnColor = 'var(--cyan-glow)';
+      }
+
+      card.innerHTML = `
+        <div class="shop-icon">${item.icon}</div>
+        <div class="shop-item-name" style="color: ${item.color};">${item.name}</div>
+        <div class="shop-item-desc">${item.description}</div>
+        <button class="shop-cost-btn" style="color: ${actionBtnColor}; border: 1px solid ${actionBtnColor};">
+          ${isUnlocked ? actionBtnText : `⚡ ${item.cost} CHIPS`}
+        </button>
+      `;
+
+      card.addEventListener('click', () => {
+        if (!isUnlocked) {
+          if (game.shopManager.purchase(item.id)) {
+            game.sound.playWallTick(700);
+            game.refreshEquippedCosmetics();
+            renderShopUI();
+          } else {
+            alert('Not enough Overclock Chips! Win matches & parries to earn more.');
+          }
+        } else {
+          game.shopManager.equip(item.id);
+          game.refreshEquippedCosmetics();
+          renderShopUI();
+        }
+      });
+
+      shopItemsGrid.appendChild(card);
+    });
+  };
+
+  [tabPaddle, tabTrail, tabGoal].forEach((tab) => {
+    tab.addEventListener('click', () => {
+      [tabPaddle, tabTrail, tabGoal].forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      if (tab === tabPaddle) currentShopCategory = 'paddle';
+      if (tab === tabTrail) currentShopCategory = 'trail';
+      if (tab === tabGoal) currentShopCategory = 'goal';
+      renderShopUI();
+    });
+  });
+
+  // --- Multiplayer WebRTC Logic ---
+  btnHostRoom.addEventListener('click', () => {
+    btnHostRoom.textContent = 'CONNECTING TO SIGNALING...';
+    game.net.hostGame((roomCode) => {
+      hostCodeDisplay.classList.remove('hidden');
+      roomCodeText.textContent = roomCode;
+      btnHostRoom.classList.add('hidden');
+    });
+
+    game.net.onConnected = () => {
+      multiplayerModal.classList.add('hidden');
+      game.mode = 'MULTIPLAYER_HOST';
+      game.startMatch();
+    };
+  });
+
+  btnCopyCode.addEventListener('click', () => {
+    navigator.clipboard.writeText(roomCodeText.textContent || '');
+    btnCopyCode.textContent = 'COPIED!';
+    setTimeout(() => {
+      btnCopyCode.textContent = 'COPY CODE';
+    }, 1800);
+  });
+
+  btnJoinRoom.addEventListener('click', () => {
+    const code = inputRoomCode.value.trim();
+    if (!code) return;
+
+    joinStatusMsg.textContent = 'Connecting to host...';
+    game.net.joinGame(code);
+
+    game.net.onConnected = () => {
+      joinStatusMsg.textContent = 'Connected! Starting match...';
+      setTimeout(() => {
+        multiplayerModal.classList.add('hidden');
+        game.mode = 'MULTIPLAYER_GUEST';
+        game.startMatch();
+      }, 500);
+    };
+
+    game.net.onError = (err) => {
+      joinStatusMsg.textContent = `Error: ${err}`;
+    };
+  });
+
+  // --- State Changes ---
   game.onStateChange = (state) => {
     if (state === 'TITLE') {
       titleScreen.classList.remove('hidden');
@@ -111,8 +301,15 @@ window.addEventListener('DOMContentLoaded', () => {
       pauseScreen.classList.add('hidden');
       hud.classList.remove('hidden');
       actionBar.classList.remove('hidden');
-      hudRobotBadge.textContent = game.director.getRobotModelName();
-      hudPhaseBadge.textContent = game.robot.phase;
+
+      if (game.mode === 'SOLO_BOSS') {
+        const currentBoss = game.bossManager.getCurrentBoss();
+        hudRobotBadge.textContent = currentBoss.name;
+        hudPhaseBadge.textContent = game.robot.phase;
+      } else {
+        hudRobotBadge.textContent = game.mode === 'MULTIPLAYER_HOST' ? 'OPPONENT [GUEST]' : 'OPPONENT [HOST]';
+        hudPhaseBadge.textContent = 'ONLINE 1v1';
+      }
     } else if (state === 'PAUSED') {
       pauseScreen.classList.remove('hidden');
     } else if (state === 'MATCH_END') {
@@ -125,7 +322,9 @@ window.addEventListener('DOMContentLoaded', () => {
   game.onScoreChange = (score) => {
     hudRobotScore.textContent = score.robot.toString();
     hudPlayerScore.textContent = score.player.toString();
-    hudPhaseBadge.textContent = game.robot.phase;
+    if (game.mode === 'SOLO_BOSS') {
+      hudPhaseBadge.textContent = game.robot.phase;
+    }
   };
 
   game.onMatchEnd = (insight, stats) => {
@@ -136,6 +335,7 @@ window.addEventListener('DOMContentLoaded', () => {
     resPlayerScore.textContent = stats.playerScore.toString();
     resRobotScore.textContent = stats.robotScore.toString();
     insightText.textContent = insight;
+    resultChipsEarned.textContent = `+${stats.chipsEarned} OVERCLOCK CHIPS EARNED`;
 
     statMaxSpeed.textContent = stats.maxPuckSpeed.toLocaleString();
     statMaxClock.textContent = `${stats.maxClockSpeedGHz || 1.0} GHz`;
@@ -145,9 +345,31 @@ window.addEventListener('DOMContentLoaded', () => {
     resultScreen.classList.remove('hidden');
   };
 
-  // Button Listeners
-  btnPlay.addEventListener('click', () => {
-    game.startMatch();
+  // --- Navigation Buttons ---
+  btnPlayBoss.addEventListener('click', () => {
+    renderBossLadderUI();
+    bossModal.classList.remove('hidden');
+  });
+
+  btnBossClose.addEventListener('click', () => {
+    bossModal.classList.add('hidden');
+  });
+
+  btnOpenMultiplayer.addEventListener('click', () => {
+    multiplayerModal.classList.remove('hidden');
+  });
+
+  btnMultiplayerClose.addEventListener('click', () => {
+    multiplayerModal.classList.add('hidden');
+  });
+
+  btnShop.addEventListener('click', () => {
+    renderShopUI();
+    shopModal.classList.remove('hidden');
+  });
+
+  btnShopClose.addEventListener('click', () => {
+    shopModal.classList.add('hidden');
   });
 
   btnRematch.addEventListener('click', () => {
@@ -161,50 +383,30 @@ window.addEventListener('DOMContentLoaded', () => {
     if (game.onStateChange) game.onStateChange('TITLE');
   });
 
-  btnPauseToggle.addEventListener('click', () => {
-    game.togglePause();
-  });
-
-  btnResume.addEventListener('click', () => {
-    game.togglePause();
-  });
-
+  btnPauseToggle.addEventListener('click', () => game.togglePause());
+  btnResume.addEventListener('click', () => game.togglePause());
   btnRestart.addEventListener('click', () => {
     pauseScreen.classList.add('hidden');
     game.restartMatch();
   });
-
   btnPauseMenu.addEventListener('click', () => {
     pauseScreen.classList.add('hidden');
     game.state = 'TITLE';
     if (game.onStateChange) game.onStateChange('TITLE');
   });
 
-  btnSettings.addEventListener('click', () => {
-    settingsModal.classList.remove('hidden');
-  });
-
-  btnSettingsClose.addEventListener('click', () => {
-    settingsModal.classList.add('hidden');
-  });
+  btnSettings.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+  btnSettingsClose.addEventListener('click', () => settingsModal.classList.add('hidden'));
 
   btnStats.addEventListener('click', () => {
     updateCareerStatsUI();
     statsModal.classList.remove('hidden');
   });
+  btnStatsClose.addEventListener('click', () => statsModal.classList.add('hidden'));
 
-  btnStatsClose.addEventListener('click', () => {
-    statsModal.classList.add('hidden');
-  });
-
-  // Action buttons
-  btnTriggerParry.addEventListener('click', () => {
-    game.triggerPlayerParry();
-  });
-
-  btnTriggerOverdrive.addEventListener('click', () => {
-    game.triggerPlayerOverdrive();
-  });
+  // Quick Action Buttons
+  btnTriggerParry.addEventListener('click', () => game.triggerPlayerParry());
+  btnTriggerOverdrive.addEventListener('click', () => game.triggerPlayerOverdrive());
 
   const handleResize = () => {
     game.renderer.setupDPR();

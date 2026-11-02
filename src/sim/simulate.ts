@@ -18,12 +18,14 @@ export function runTunnelingTest(): boolean {
   for (let i = 0; i < testIterations; i++) {
     // High speed puck moving directly toward paddle
     const puck: Puck = {
+      id: 'puck_test',
       pos: { x: 300, y: 700 },
       vel: { x: (Math.random() - 0.5) * 400, y: 1800 }, // Max speed 1800 px/s
       radius: DEFAULT_TABLE.puckRadius,
       spin: 0,
       isHyperShot: false,
       isRailgun: false,
+      isGolden: false,
       trail: [],
       lastHitter: null,
       hitCount: 0,
@@ -36,6 +38,7 @@ export function runTunnelingTest(): boolean {
       radius: DEFAULT_TABLE.paddleRadius,
       color: '#00f0ff',
       glowColor: '#00f0ff',
+      skinId: 'default',
       parryActive: false,
       parryTimer: 0,
       parryCooldown: 0,
@@ -51,6 +54,7 @@ export function runTunnelingTest(): boolean {
       radius: DEFAULT_TABLE.paddleRadius,
       color: '#ff2a6d',
       glowColor: '#ff2a6d',
+      skinId: 'robot',
       parryActive: false,
       parryTimer: 0,
       parryCooldown: 0,
@@ -186,6 +190,7 @@ export function runMatchSimulation(numMatches = 1000) {
       radius: DEFAULT_TABLE.paddleRadius,
       color: '#00f0ff',
       glowColor: '#00f0ff',
+      skinId: 'default',
       parryActive: false,
       parryTimer: 0,
       parryCooldown: 0,
@@ -201,6 +206,7 @@ export function runMatchSimulation(numMatches = 1000) {
       radius: DEFAULT_TABLE.paddleRadius,
       color: '#ff2a6d',
       glowColor: '#ff2a6d',
+      skinId: 'robot',
       parryActive: false,
       parryTimer: 0,
       parryCooldown: 0,
@@ -217,6 +223,7 @@ export function runMatchSimulation(numMatches = 1000) {
       humanBot.reset();
 
       const puck: Puck = {
+        id: 'puck_sim',
         pos: { x: 300, y: 450 },
         vel: {
           x: (Math.random() - 0.5) * 350,
@@ -226,6 +233,7 @@ export function runMatchSimulation(numMatches = 1000) {
         spin: 0,
         isHyperShot: false,
         isRailgun: false,
+        isGolden: false,
         trail: [],
         lastHitter: null,
         hitCount: 0,

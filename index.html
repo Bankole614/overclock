@@ -9,14 +9,14 @@
   <body>
     <div id="app">
       <div id="game-container">
-        <!-- Top HUD -->
+        <!-- Top In-Game HUD -->
         <div id="hud" class="hidden">
           <div class="hud-panel">
             <div class="hud-score robot-score-box">
               <span id="hud-robot-score">0</span>
             </div>
             <div style="display: flex; flex-direction: column; text-align: left;">
-              <span id="hud-robot-badge" style="font-size: 0.72rem; color: #ff2a6d; font-weight: 800; letter-spacing: 1px;">MK-I PROTO</span>
+              <span id="hud-robot-badge" style="font-size: 0.72rem; color: #ff2a6d; font-weight: 800; letter-spacing: 1px;">MK-I VECTOR</span>
               <span id="hud-phase-badge" style="font-size: 0.62rem; color: #ffb703; letter-spacing: 0.5px;">ANALYTICAL</span>
             </div>
           </div>
@@ -52,20 +52,101 @@
           <div class="title-box">
             <h1 class="game-title">OVERCLOCK</h1>
             <div class="tagline">Beat the machine that sees every shot coming</div>
-            <div class="version-badge">KINETIC ARCADE EDITION // 5.5 GHz</div>
+            <div class="version-badge">EXPANDED ARCADE & P2P MULTIPLAYER</div>
           </div>
 
           <!-- Quick Controls Help -->
           <div class="controls-pill">
-            <span>🖱️ <b>Mouse / Touch:</b> Move</span>
+            <span>🖱️ <b>Mouse / Touch:</b> Move Paddle</span>
             <span>⚡ <b>Space / R-Click:</b> Perfect Parry</span>
-            <span>💥 <b>E / F:</b> Overdrive</span>
+            <span>💥 <b>Key [E]:</b> Overdrive EMP Smash</span>
           </div>
 
-          <button id="btn-play" class="btn-primary">PLAY MATCH</button>
-          <div style="display: flex; gap: 8px;">
-            <button id="btn-stats" class="btn-secondary">RECORD</button>
-            <button id="btn-settings" class="btn-secondary">SETTINGS</button>
+          <!-- Main Actions -->
+          <div style="display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px;">
+            <button id="btn-play-boss" class="btn-primary" style="margin-bottom: 0;">ARCADE LADDER</button>
+            <button id="btn-open-multiplayer" class="btn-secondary" style="border-color: var(--cyan-glow); color: var(--cyan-glow); font-size: 0.95rem;">🌐 ONLINE 1v1 (CROSS-DEVICE)</button>
+            <div style="display: flex; gap: 8px; justify-content: center;">
+              <button id="btn-shop" class="btn-secondary" style="flex: 1;">SHOP</button>
+              <button id="btn-stats" class="btn-secondary" style="flex: 1;">RECORD</button>
+              <button id="btn-settings" class="btn-secondary" style="flex: 1;">SETTINGS</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Boss Ladder Selection Modal -->
+        <div id="boss-modal" class="overlay-screen hidden">
+          <div class="modal-card wide-modal">
+            <h3 class="modal-header">ARCADE BOSS LADDER</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+              Defeat each machine to unlock the next opponent in the cyber gauntlet.
+            </p>
+            <div id="boss-cards-grid" class="boss-grid">
+              <!-- Rendered dynamically -->
+            </div>
+            <button id="btn-boss-close" class="btn-secondary" style="width: 100%; margin-top: 16px;">BACK TO MENU</button>
+          </div>
+        </div>
+
+        <!-- Cross-Device Multiplayer Modal -->
+        <div id="multiplayer-modal" class="overlay-screen hidden">
+          <div class="modal-card">
+            <h3 class="modal-header">ONLINE 1v1 (CROSS-DEVICE)</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 18px;">
+              Play against a friend on their own phone, tablet, or laptop. No accounts or downloads needed.
+            </p>
+
+            <!-- Host Option -->
+            <div class="net-section">
+              <span class="net-title">OPTION A: HOST A ROOM</span>
+              <button id="btn-host-room" class="btn-primary" style="width: 100%; font-size: 1rem; padding: 12px;">CREATE ROOM CODE</button>
+              <div id="host-code-display" class="room-code-box hidden">
+                <span style="font-size: 0.75rem; color: var(--text-muted);">SHARE THIS CODE WITH YOUR FRIEND:</span>
+                <span id="room-code-text" class="room-code-num">OC-7482</span>
+                <button id="btn-copy-code" class="btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;">COPY CODE</button>
+                <div id="host-waiting-status" style="font-size: 0.8rem; color: var(--amber-warn); margin-top: 8px;">⏳ Waiting for friend to connect...</div>
+              </div>
+            </div>
+
+            <!-- Join Option -->
+            <div class="net-section" style="margin-top: 16px;">
+              <span class="net-title">OPTION B: JOIN WITH ROOM CODE</span>
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <input type="text" id="input-room-code" placeholder="ENTER CODE (e.g. OC-1234)" class="net-input" />
+                <button id="btn-join-room" class="btn-secondary" style="background: var(--cyan-glow); color: #000; font-weight: 800;">JOIN</button>
+              </div>
+              <div id="join-status-msg" style="font-size: 0.8rem; color: var(--cyan-glow); margin-top: 6px;"></div>
+            </div>
+
+            <button id="btn-multiplayer-close" class="btn-secondary" style="width: 100%; margin-top: 16px;">BACK</button>
+          </div>
+        </div>
+
+        <!-- Holo-Shop Customization Modal -->
+        <div id="shop-modal" class="overlay-screen hidden">
+          <div class="modal-card wide-modal">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 class="modal-header" style="margin-bottom: 0;">HOLO-SHOP</h3>
+              <div class="chips-badge">
+                <span>⚡</span>
+                <span id="shop-chips-count">100</span>
+                <span>CHIPS</span>
+              </div>
+            </div>
+
+            <!-- Categories Tabs -->
+            <div class="tab-row">
+              <button id="tab-paddle" class="tab-btn active">STRIKER SKINS</button>
+              <button id="tab-trail" class="tab-btn">PUCK TRAILS</button>
+              <button id="tab-goal" class="tab-btn">GOAL FX</button>
+            </div>
+
+            <!-- Shop Items Grid -->
+            <div id="shop-items-grid" class="shop-grid">
+              <!-- Rendered dynamically -->
+            </div>
+
+            <button id="btn-shop-close" class="btn-secondary" style="width: 100%; margin-top: 18px;">CLOSE SHOP</button>
           </div>
         </div>
 
@@ -79,11 +160,16 @@
               <span id="res-robot-score" style="color: var(--crimson-glow);">7</span>
             </div>
 
+            <!-- Chips Award Banner -->
+            <div id="result-chips-earned" class="chips-earned-pill">
+              +60 OVERCLOCK CHIPS EARNED
+            </div>
+
             <!-- Insight Line -->
             <div class="insight-card">
               <div class="insight-label">TACTICAL DEBRIEF</div>
               <div id="insight-text" class="insight-text">
-                The robot calculates every direct shot. Use angled bank-shots to exploit its reaction delay.
+                The robot calculates direct shots. Use angled bank-shots to exploit its reaction delay.
               </div>
             </div>
 
@@ -103,11 +189,10 @@
               </div>
               <div class="stat-item">
                 <span id="stat-total-hits" class="stat-val">34</span>
-                <span class="stat-lbl">Rally Hits</span>
+                <span class="stat-lbl">Rallies</span>
               </div>
             </div>
 
-            <!-- Rematch Action -->
             <button id="btn-rematch" class="btn-primary" style="width: 100%; margin-top: 8px;">REMATCH</button>
             <button id="btn-result-menu" class="btn-secondary" style="width: 100%;">MAIN MENU</button>
           </div>
@@ -138,6 +223,13 @@
               <span class="setting-label">Music & Drones</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="setting-music" checked />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">Multi-Puck Sudden Death</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="setting-multipuck" checked />
                 <span class="slider"></span>
               </label>
             </div>
@@ -191,8 +283,8 @@
               <span id="stat-career-fastest" style="font-weight: 700; color: #fff;">--</span>
             </div>
             <div class="setting-row">
-              <span class="setting-label">Robot Boss Tier</span>
-              <span id="stat-career-robot" style="font-weight: 700; color: var(--crimson-glow);">MK-I PROTO</span>
+              <span class="setting-label">Bosses Defeated</span>
+              <span id="stat-career-bosses" style="font-weight: 700; color: var(--crimson-glow);">0 / 5</span>
             </div>
             <button id="btn-stats-close" class="btn-secondary" style="width: 100%; margin-top: 18px;">CLOSE</button>
           </div>

@@ -30,6 +30,7 @@ export class SoundEngine {
     vibration: true,
     showPredictionLine: true,
     curveShots: true,
+    multiPuckOverload: true,
   };
 
   constructor(settings?: Partial<GameSettings>) {

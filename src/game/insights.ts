@@ -25,6 +25,7 @@ export class MatchTracker {
       reboundGoals: 0,
       crossTableGoals: 0,
       ralliesOver5Hits: 0,
+      chipsEarned: 0,
       winner: null,
     };
   }

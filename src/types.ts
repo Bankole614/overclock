@@ -4,14 +4,16 @@ export interface Vec2 {
 }
 
 export interface Puck {
+  id: string;
   pos: Vec2;
   vel: Vec2;
   radius: number;
-  spin: number; // Angular velocity (rad/s) for Magnus effect curve shots
-  isHyperShot: boolean; // True on perfect parry or railgun smash
+  spin: number;
+  isHyperShot: boolean;
   isRailgun: boolean;
+  isGolden: boolean; // 2x points
   trail: { x: number; y: number; speed: number; alpha: number; color?: string }[];
-  lastHitter: 'player' | 'robot' | null;
+  lastHitter: 'player' | 'robot' | 'guest' | null;
   hitCount: number;
 }
 
@@ -22,10 +24,11 @@ export interface Paddle {
   radius: number;
   color: string;
   glowColor: string;
+  skinId: string;
   parryActive: boolean;
-  parryTimer: number; // Duration of active parry window
+  parryTimer: number;
   parryCooldown: number;
-  overdriveCharge: number; // 0 to 100%
+  overdriveCharge: number;
   isStunned: boolean;
   stunTimer: number;
 }
@@ -58,13 +61,37 @@ export const DEFAULT_TABLE: TableConfig = {
 
 export type GameState =
   | 'TITLE'
+  | 'BOSS_SELECT'
+  | 'MULTIPLAYER_LOBBY'
+  | 'SHOP'
   | 'COUNTDOWN'
   | 'PLAYING'
   | 'POINT_SCORED'
   | 'MATCH_END'
   | 'PAUSED';
 
+export type GameMode = 'SOLO_BOSS' | 'MULTIPLAYER_HOST' | 'MULTIPLAYER_GUEST';
+
+export type BossId = 'VECTOR' | 'VIPER' | 'TITAN' | 'PHANTOM' | 'APEX';
+
 export type BossPhase = 'ANALYTICAL' | 'OVERCLOCKED' | 'REDLINE';
+
+export interface BossProfile {
+  id: BossId;
+  name: string;
+  title: string;
+  speed: number;
+  reactionMs: number;
+  paddleRadius: number;
+  color: string;
+  glowColor: string;
+  signature: string;
+  introQuote: string;
+  victoryQuote: string;
+  defeatQuote: string;
+  unlocked: boolean;
+  defeated: boolean;
+}
 
 export interface Score {
   player: number;
@@ -81,6 +108,25 @@ export interface GameSettings {
   vibration: boolean;
   showPredictionLine: boolean;
   curveShots: boolean;
+  multiPuckOverload: boolean;
+}
+
+export interface ShopItem {
+  id: string;
+  category: 'paddle' | 'trail' | 'goal';
+  name: string;
+  cost: number;
+  color: string;
+  icon: string;
+  description: string;
+}
+
+export interface CosmeticState {
+  chips: number;
+  equippedPaddle: string;
+  equippedTrail: string;
+  equippedGoal: string;
+  unlockedItems: string[];
 }
 
 export interface MatchStats {
@@ -98,7 +144,8 @@ export interface MatchStats {
   reboundGoals: number;
   crossTableGoals: number;
   ralliesOver5Hits: number;
-  winner: 'player' | 'robot' | null;
+  chipsEarned: number;
+  winner: 'player' | 'robot' | 'guest' | null;
 }
 
 export interface LifetimeStats {
@@ -110,4 +157,5 @@ export interface LifetimeStats {
   totalPointsScored: number;
   totalPointsConceded: number;
   totalParries: number;
+  bossesDefeated: BossId[];
 }

@@ -59,6 +59,7 @@ export class GameRenderer {
     prev: RenderState,
     interpAlpha: number,
     puckObj: Puck,
+    puck2Obj: Puck | null,
     playerPaddleObj: Paddle,
     robotPaddleObj: Paddle,
     robotState: RobotState,
@@ -121,16 +122,23 @@ export class GameRenderer {
       prev.robotPaddle.pos.y +
       (curr.robotPaddle.pos.y - prev.robotPaddle.pos.y) * interpAlpha;
 
-    // 5. Draw Puck Trail
+    // 5. Draw Puck Trails
     this.drawPuckTrail(puckObj, clockSpeedGHz);
+    if (puck2Obj) {
+      this.drawPuckTrail(puck2Obj, clockSpeedGHz);
+    }
 
     // 6. Draw Paddles
-    this.drawRobotPaddle(robotX, robotY, robotPaddleObj.radius, robotState, robotPhase);
+    this.drawRobotPaddle(robotX, robotY, robotPaddleObj.radius, robotState, robotPhase, robotPaddleObj.color);
     this.drawPlayerPaddle(playerX, playerY, playerPaddleObj);
 
-    // 7. Draw Puck with Spin/Hyper Aura
+    // 7. Draw Puck with Spin/Hyper/Golden Aura
     const puckSpeed = Math.hypot(curr.puck.vel.x, curr.puck.vel.y);
     this.drawPuck(puckX, puckY, puckObj, puckSpeed, clockSpeedGHz);
+    if (puck2Obj) {
+      const spd2 = Math.hypot(puck2Obj.vel.x, puck2Obj.vel.y);
+      this.drawPuck(puck2Obj.pos.x, puck2Obj.pos.y, puck2Obj, spd2, clockSpeedGHz);
+    }
 
     // 8. Particles & Shockwaves
     this.particles.render(ctx);
@@ -368,9 +376,10 @@ export class GameRenderer {
     ctx.fillStyle = '#051923';
     ctx.fill();
 
+    const skinColor = paddle.color || '#00f0ff';
     ctx.lineWidth = 3.5;
-    ctx.strokeStyle = '#00f0ff';
-    ctx.shadowColor = '#00f0ff';
+    ctx.strokeStyle = skinColor;
+    ctx.shadowColor = skinColor;
     ctx.shadowBlur = 14;
     ctx.stroke();
 
@@ -378,15 +387,17 @@ export class GameRenderer {
     ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.arc(x, y, r * 0.65, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+    ctx.strokeStyle = skinColor;
+    ctx.globalAlpha = 0.4;
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.globalAlpha = 1.0;
 
     // Center handle cap
     ctx.beginPath();
     ctx.arc(x, y, r * 0.35, 0, Math.PI * 2);
-    ctx.fillStyle = '#00f0ff';
-    ctx.shadowColor = '#00f0ff';
+    ctx.fillStyle = skinColor;
+    ctx.shadowColor = skinColor;
     ctx.shadowBlur = 8;
     ctx.fill();
 
@@ -398,12 +409,13 @@ export class GameRenderer {
     y: number,
     r: number,
     state: RobotState,
-    phase: BossPhase
+    phase: BossPhase,
+    bossColor = '#ff2a6d'
   ) {
     const ctx = this.ctx;
     ctx.save();
 
-    let mainColor = '#ff2a6d';
+    let mainColor = bossColor;
     if (phase === 'REDLINE') mainColor = '#ff0033';
     else if (phase === 'OVERCLOCKED') mainColor = '#ffb703';
 
@@ -457,7 +469,14 @@ export class GameRenderer {
     const speedNorm = Math.min(1, speed / 2000);
 
     // Dynamic lightning / fire aura on high clock speed or hypershot
-    if (puck.isHyperShot || clockSpeedGHz >= 3.0) {
+    if (puck.isGolden) {
+      ctx.beginPath();
+      ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.4)';
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 30;
+      ctx.fill();
+    } else if (puck.isHyperShot || clockSpeedGHz >= 3.0) {
       ctx.beginPath();
       ctx.arc(x, y, r * 1.8, 0, Math.PI * 2);
       ctx.fillStyle = puck.isHyperShot ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 69, 0, 0.25)';
@@ -469,9 +488,9 @@ export class GameRenderer {
     // Puck disc
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = puck.isHyperShot ? '#fff8e7' : '#ffffff';
-    ctx.shadowColor = puck.isHyperShot ? '#ffd166' : speedNorm > 0.5 ? '#ff2a6d' : '#00f0ff';
-    ctx.shadowBlur = 10 + speedNorm * 18;
+    ctx.fillStyle = puck.isGolden ? '#ffd700' : puck.isHyperShot ? '#fff8e7' : '#ffffff';
+    ctx.shadowColor = puck.isGolden ? '#ffd700' : puck.isHyperShot ? '#ffd166' : speedNorm > 0.5 ? '#ff2a6d' : '#00f0ff';
+    ctx.shadowBlur = puck.isGolden ? 25 : 10 + speedNorm * 18;
     ctx.fill();
 
     // Spin indicator dot (shows puck curving rotation)

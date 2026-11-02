@@ -16,6 +16,7 @@ export class StorageManager {
       vibration: true,
       showPredictionLine: true,
       curveShots: true,
+      multiPuckOverload: true,
     };
 
     try {
@@ -47,6 +48,7 @@ export class StorageManager {
       totalPointsScored: 0,
       totalPointsConceded: 0,
       totalParries: 0,
+      bossesDefeated: [],
     };
 
     try {
