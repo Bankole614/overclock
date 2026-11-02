@@ -7,7 +7,10 @@ export interface Puck {
   pos: Vec2;
   vel: Vec2;
   radius: number;
-  trail: { x: number; y: number; speed: number; alpha: number }[];
+  spin: number; // Angular velocity (rad/s) for Magnus effect curve shots
+  isHyperShot: boolean; // True on perfect parry or railgun smash
+  isRailgun: boolean;
+  trail: { x: number; y: number; speed: number; alpha: number; color?: string }[];
   lastHitter: 'player' | 'robot' | null;
   hitCount: number;
 }
@@ -19,6 +22,21 @@ export interface Paddle {
   radius: number;
   color: string;
   glowColor: string;
+  parryActive: boolean;
+  parryTimer: number; // Duration of active parry window
+  parryCooldown: number;
+  overdriveCharge: number; // 0 to 100%
+  isStunned: boolean;
+  stunTimer: number;
+}
+
+export interface ArenaBumper {
+  id: string;
+  pos: Vec2;
+  radius: number;
+  active: boolean;
+  pulseTimer: number;
+  color: string;
 }
 
 export interface TableConfig {
@@ -28,7 +46,7 @@ export interface TableConfig {
   goalDepth: number;
   puckRadius: number;
   paddleRadius: number;
-  puckMaxSpeed: number;
+  puckBaseMaxSpeed: number;
   wallRestitution: number;
   puckDrag: number;
   postRadius: number;
@@ -41,9 +59,9 @@ export const DEFAULT_TABLE: TableConfig = {
   goalDepth: 30,
   puckRadius: 18,
   paddleRadius: 34,
-  puckMaxSpeed: 1800,
+  puckBaseMaxSpeed: 1800,
   wallRestitution: 0.96,
-  puckDrag: 0.12,
+  puckDrag: 0.08,
   postRadius: 10,
 };
 
@@ -54,6 +72,8 @@ export type GameState =
   | 'POINT_SCORED'
   | 'MATCH_END'
   | 'PAUSED';
+
+export type BossPhase = 'ANALYTICAL' | 'OVERCLOCKED' | 'REDLINE';
 
 export interface Score {
   player: number;
@@ -69,6 +89,8 @@ export interface GameSettings {
   reduceMotion: boolean;
   vibration: boolean;
   showPredictionLine: boolean;
+  arenaBumpers: boolean;
+  curveShots: boolean;
 }
 
 export interface MatchStats {
@@ -76,9 +98,12 @@ export interface MatchStats {
   playerScore: number;
   robotScore: number;
   maxPuckSpeed: number;
+  maxClockSpeedGHz: number;
   totalHits: number;
   playerHits: number;
   robotHits: number;
+  parriesCount: number;
+  curveGoalsCount: number;
   overcommitGoals: number;
   reboundGoals: number;
   crossTableGoals: number;
@@ -94,4 +119,5 @@ export interface LifetimeStats {
   fastestWinSeconds: number | null;
   totalPointsScored: number;
   totalPointsConceded: number;
+  totalParries: number;
 }

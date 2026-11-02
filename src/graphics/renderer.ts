@@ -1,4 +1,4 @@
-import { TableConfig, Puck, Paddle, GameSettings } from '../types';
+import { TableConfig, Puck, Paddle, GameSettings, ArenaBumper, BossPhase } from '../types';
 import { ParticleSystem } from './particles';
 import { PredictionPath, RobotState } from '../ai/robotAI';
 
@@ -13,6 +13,7 @@ export class GameRenderer {
   private shakeAmount = 0;
   private shakeDuration = 0;
   private dpr = 1;
+  private timeSec = 0;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -42,6 +43,7 @@ export class GameRenderer {
   }
 
   public update(dt: number) {
+    this.timeSec += dt;
     if (this.shakeDuration > 0) {
       this.shakeDuration -= dt;
       if (this.shakeDuration <= 0) {
@@ -60,7 +62,11 @@ export class GameRenderer {
     playerPaddleObj: Paddle,
     robotPaddleObj: Paddle,
     robotState: RobotState,
+    robotPhase: BossPhase,
+    robotDialogue: string | null,
     prediction: PredictionPath | null,
+    bumpers: ArenaBumper[],
+    clockSpeedGHz: number,
     score: { player: number; robot: number },
     countdownText: string | null,
     goalScoredBanner: string | null
@@ -72,7 +78,6 @@ export class GameRenderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Apply scale to fit logical table
     const scale = Math.min(
       this.canvas.width / width,
       this.canvas.height / height
@@ -86,20 +91,25 @@ export class GameRenderer {
 
     // Screen Shake
     if (this.shakeAmount > 0) {
-      const sx = (Math.random() - 0.5) * this.shakeAmount * 16;
-      const sy = (Math.random() - 0.5) * this.shakeAmount * 16;
+      const sx = (Math.random() - 0.5) * this.shakeAmount * 18;
+      const sy = (Math.random() - 0.5) * this.shakeAmount * 18;
       ctx.translate(sx, sy);
     }
 
-    // 1. Draw Arena Floor & Grid
-    this.drawArena(score);
+    // 1. Draw Arena Floor, Grid & Clock Speed Visuals
+    this.drawArena(score, clockSpeedGHz, robotPhase);
 
-    // 2. Draw Robot Prediction Laser Line
-    if (this.settings.showPredictionLine && prediction && robotState === 'TRACKING') {
-      this.drawPrediction(prediction);
+    // 2. Draw Quantum Arena Bumpers
+    if (this.settings.arenaBumpers) {
+      this.drawBumpers(bumpers);
     }
 
-    // 3. Interpolate Entity Positions
+    // 3. Draw Robot Prediction Laser Line
+    if (this.settings.showPredictionLine && prediction && robotState === 'TRACKING') {
+      this.drawPrediction(prediction, robotPhase);
+    }
+
+    // 4. Interpolate Entity Positions
     const puckX = prev.puck.pos.x + (curr.puck.pos.x - prev.puck.pos.x) * interpAlpha;
     const puckY = prev.puck.pos.y + (curr.puck.pos.y - prev.puck.pos.y) * interpAlpha;
 
@@ -117,24 +127,27 @@ export class GameRenderer {
       prev.robotPaddle.pos.y +
       (curr.robotPaddle.pos.y - prev.robotPaddle.pos.y) * interpAlpha;
 
-    // 4. Draw Puck Trail
-    this.drawPuckTrail(puckObj);
+    // 5. Draw Puck Trail
+    this.drawPuckTrail(puckObj, clockSpeedGHz);
 
-    // 5. Draw Paddles
-    this.drawRobotPaddle(robotX, robotY, robotPaddleObj.radius, robotState);
-    this.drawPlayerPaddle(playerX, playerY, playerPaddleObj.radius);
+    // 6. Draw Paddles
+    this.drawRobotPaddle(robotX, robotY, robotPaddleObj.radius, robotState, robotPhase);
+    this.drawPlayerPaddle(playerX, playerY, playerPaddleObj);
 
-    // 6. Draw Puck
+    // 7. Draw Puck with Spin/Hyper Aura
     const puckSpeed = Math.hypot(curr.puck.vel.x, curr.puck.vel.y);
-    this.drawPuck(puckX, puckY, puckObj.radius, puckSpeed);
+    this.drawPuck(puckX, puckY, puckObj, puckSpeed, clockSpeedGHz);
 
-    // 7. Particles and Shockwaves
+    // 8. Particles & Shockwaves
     this.particles.render(ctx);
 
-    // 8. Robot HUD Scanner at the top
-    this.drawRobotHUD(robotState);
+    // 9. Overclock Clock Speed & Overdrive HUD
+    this.drawOverclockHUD(clockSpeedGHz, playerPaddleObj.overdriveCharge);
 
-    // 9. Countdown / Goal Banner Overlay
+    // 10. Robot Visor Status & Live Cyber Dialogue
+    this.drawRobotTerminal(robotState, robotPhase, robotDialogue);
+
+    // 11. Countdown / Goal Banner Overlay
     if (countdownText) {
       this.drawCountdown(countdownText);
     }
@@ -145,20 +158,27 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private drawArena(score: { player: number; robot: number }) {
+  private drawArena(score: { player: number; robot: number }, clockSpeedGHz: number, phase: BossPhase) {
     const { width, height, goalWidth, postRadius } = this.table;
     const ctx = this.ctx;
 
-    // Table background gradient
+    // Floor gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-    bgGrad.addColorStop(0, '#0c0f18');
-    bgGrad.addColorStop(0.5, '#080a10');
-    bgGrad.addColorStop(1, '#0a101d');
+    if (phase === 'REDLINE') {
+      bgGrad.addColorStop(0, '#1c0812');
+      bgGrad.addColorStop(0.5, '#0b0409');
+      bgGrad.addColorStop(1, '#0e0b1c');
+    } else {
+      bgGrad.addColorStop(0, '#0c0f18');
+      bgGrad.addColorStop(0.5, '#080a10');
+      bgGrad.addColorStop(1, '#0a101d');
+    }
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
-    // Subtly glowing grid lines
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.04)';
+    // Glowing grid lines
+    const gridColor = phase === 'REDLINE' ? 'rgba(255, 42, 109, 0.07)' : 'rgba(0, 240, 255, 0.04)';
+    ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
     const gridSize = 40;
     for (let x = gridSize; x < width; x += gridSize) {
@@ -174,13 +194,13 @@ export class GameRenderer {
       ctx.stroke();
     }
 
-    // Outer border glowing rails
-    ctx.strokeStyle = '#00e5ff';
-    ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 12;
+    // Outer rails glow with clock speed
+    const railColor = clockSpeedGHz >= 4.0 ? '#ffb703' : phase === 'REDLINE' ? '#ff2a6d' : '#00e5ff';
+    ctx.strokeStyle = railColor;
+    ctx.shadowColor = railColor;
+    ctx.shadowBlur = 12 + (clockSpeedGHz - 1.0) * 3;
     ctx.lineWidth = 4;
 
-    // Left and Right walls
     ctx.beginPath();
     ctx.moveTo(2, 0);
     ctx.lineTo(2, height);
@@ -188,7 +208,6 @@ export class GameRenderer {
     ctx.lineTo(width - 2, height);
     ctx.stroke();
 
-    // Top wall segments (outside goal)
     const goalLeft = (width - goalWidth) / 2;
     const goalRight = (width + goalWidth) / 2;
 
@@ -197,7 +216,6 @@ export class GameRenderer {
     ctx.lineTo(goalLeft, 2);
     ctx.moveTo(goalRight, 2);
     ctx.lineTo(width, 2);
-    // Bottom wall segments
     ctx.moveTo(0, height - 2);
     ctx.lineTo(goalLeft, height - 2);
     ctx.moveTo(goalRight, height - 2);
@@ -222,40 +240,63 @@ export class GameRenderer {
     ctx.arc(width / 2, height / 2, 85, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.arc(width / 2, height / 2, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#00f0ff';
-    ctx.fill();
-
-    // Robot Goal Pocket (Top)
+    // Goal Pockets
     ctx.fillStyle = 'rgba(255, 0, 85, 0.15)';
     ctx.fillRect(goalLeft, 0, goalWidth, 24);
     ctx.strokeStyle = '#ff0055';
     ctx.lineWidth = 3;
     ctx.strokeRect(goalLeft, 0, goalWidth, 24);
 
-    // Player Goal Pocket (Bottom)
     ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
     ctx.fillRect(goalLeft, height - 24, goalWidth, 24);
     ctx.strokeStyle = '#00f0ff';
     ctx.lineWidth = 3;
     ctx.strokeRect(goalLeft, height - 24, goalWidth, 24);
 
-    // Rounded Goal Posts
+    // Goal Posts
     this.drawPost(goalLeft, 0, postRadius, '#ff0055');
     this.drawPost(goalRight, 0, postRadius, '#ff0055');
     this.drawPost(goalLeft, height, postRadius, '#00f0ff');
     this.drawPost(goalRight, height, postRadius, '#00f0ff');
 
-    // Huge subtle background score numerals
+    // Huge background numerals
     ctx.font = '900 130px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(255, 42, 109, 0.08)';
+    ctx.fillStyle = phase === 'REDLINE' ? 'rgba(255, 42, 109, 0.15)' : 'rgba(255, 42, 109, 0.08)';
     ctx.fillText(score.robot.toString(), width / 2, height / 4);
 
     ctx.fillStyle = 'rgba(0, 240, 255, 0.08)';
     ctx.fillText(score.player.toString(), width / 2, (height * 3) / 4);
+  }
+
+  private drawBumpers(bumpers: ArenaBumper[]) {
+    const ctx = this.ctx;
+    for (const b of bumpers) {
+      if (!b.active) continue;
+      ctx.save();
+      const pulseScale = 1 + (b.pulseTimer > 0 ? b.pulseTimer * 0.4 : 0);
+
+      // Outer glow
+      ctx.beginPath();
+      ctx.arc(b.pos.x, b.pos.y, b.radius * pulseScale, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 183, 3, 0.15)';
+      ctx.fill();
+
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = b.pulseTimer > 0 ? '#ffffff' : b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = b.pulseTimer > 0 ? 25 : 12;
+      ctx.stroke();
+
+      // Inner Core
+      ctx.beginPath();
+      ctx.arc(b.pos.x, b.pos.y, b.radius * 0.4, 0, Math.PI * 2);
+      ctx.fillStyle = b.color;
+      ctx.fill();
+
+      ctx.restore();
+    }
   }
 
   private drawPost(x: number, y: number, r: number, color: string) {
@@ -270,13 +311,14 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private drawPrediction(prediction: PredictionPath) {
+  private drawPrediction(prediction: PredictionPath, phase: BossPhase) {
     const ctx = this.ctx;
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 42, 109, 0.65)';
-    ctx.shadowColor = '#ff2a6d';
-    ctx.shadowBlur = 6;
-    ctx.lineWidth = 1.5;
+    const color = phase === 'REDLINE' ? '#ff2a6d' : '#ffd166';
+    ctx.strokeStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 1.8;
     ctx.setLineDash([4, 4]);
 
     ctx.beginPath();
@@ -286,52 +328,76 @@ export class GameRenderer {
     });
     ctx.stroke();
 
-    // Draw reticle at calculated intercept
     const { x, y } = prediction.targetIntercept;
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.arc(x, y, 12, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(x - 14, y);
-    ctx.lineTo(x + 14, y);
-    ctx.moveTo(x, y - 14);
-    ctx.lineTo(x, y + 14);
+    ctx.moveTo(x - 16, y);
+    ctx.lineTo(x + 16, y);
+    ctx.moveTo(x, y - 16);
+    ctx.lineTo(x, y + 16);
     ctx.stroke();
 
     ctx.restore();
   }
 
-  private drawPuckTrail(puck: Puck) {
+  private drawPuckTrail(puck: Puck, clockSpeedGHz: number) {
     const ctx = this.ctx;
     const trail = puck.trail;
     if (trail.length < 2) return;
 
     ctx.save();
+    const isOverclocked = clockSpeedGHz >= 3.0;
+
     for (let i = 1; i < trail.length; i++) {
       const p1 = trail[i - 1];
       const p2 = trail[i];
-      const spdNorm = Math.min(1, p2.speed / 1600);
+      const spdNorm = Math.min(1, p2.speed / 2000);
 
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y);
       ctx.lineTo(p2.x, p2.y);
-      ctx.strokeStyle = puck.lastHitter === 'robot'
-        ? `rgba(255, 42, 109, ${p2.alpha * (0.3 + spdNorm * 0.7)})`
-        : `rgba(0, 240, 255, ${p2.alpha * (0.3 + spdNorm * 0.7)})`;
-      ctx.lineWidth = puck.radius * (0.3 + spdNorm * 0.7) * p2.alpha;
+
+      let strokeColor = `rgba(0, 240, 255, ${p2.alpha * (0.3 + spdNorm * 0.7)})`;
+      if (puck.isHyperShot) {
+        strokeColor = `rgba(255, 215, 0, ${p2.alpha})`;
+      } else if (isOverclocked) {
+        strokeColor = `rgba(255, 80, 0, ${p2.alpha * (0.4 + spdNorm * 0.6)})`;
+      } else if (puck.lastHitter === 'robot') {
+        strokeColor = `rgba(255, 42, 109, ${p2.alpha * (0.3 + spdNorm * 0.7)})`;
+      }
+
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = puck.radius * (0.4 + spdNorm * 0.8) * p2.alpha * (puck.isHyperShot ? 1.5 : 1);
       ctx.lineCap = 'round';
       ctx.stroke();
     }
     ctx.restore();
   }
 
-  private drawPlayerPaddle(x: number, y: number, r: number) {
+  private drawPlayerPaddle(x: number, y: number, paddle: Paddle) {
     const ctx = this.ctx;
     ctx.save();
+    const r = paddle.radius;
 
-    // Outer glow ring
+    // PERFECT PARRY SHIELD AURA
+    if (paddle.parryActive) {
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.55, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#ffd166';
+      ctx.shadowBlur = 25;
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.25)';
+      ctx.fill();
+    }
+
+    // Outer body
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = '#051923';
@@ -343,7 +409,7 @@ export class GameRenderer {
     ctx.shadowBlur = 14;
     ctx.stroke();
 
-    // Inner bevel & grip
+    // Inner bevel
     ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.arc(x, y, r * 0.65, 0, Math.PI * 2);
@@ -362,13 +428,31 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private drawRobotPaddle(x: number, y: number, r: number, state: RobotState) {
+  private drawRobotPaddle(
+    x: number,
+    y: number,
+    r: number,
+    state: RobotState,
+    phase: BossPhase
+  ) {
     const ctx = this.ctx;
     ctx.save();
 
     let mainColor = '#ff2a6d';
-    if (state === 'OVERCOMMITTED') mainColor = '#ffb703';
-    if (state === 'GLITCHING') mainColor = '#9d4edd';
+    if (phase === 'REDLINE') mainColor = '#ff0033';
+    else if (phase === 'OVERCLOCKED') mainColor = '#ffb703';
+
+    if (state === 'OVERCOMMITTED') mainColor = '#ffd166';
+    if (state === 'GLITCHING' || state === 'STUNNED') mainColor = '#9d4edd';
+
+    // Redline vibrating blur
+    if (phase === 'REDLINE') {
+      ctx.beginPath();
+      ctx.arc(x + (Math.random() - 0.5) * 5, y + (Math.random() - 0.5) * 5, r * 1.25, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 0, 51, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
 
     // Outer body
     ctx.beginPath();
@@ -379,7 +463,7 @@ export class GameRenderer {
     ctx.lineWidth = 3.5;
     ctx.strokeStyle = mainColor;
     ctx.shadowColor = mainColor;
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = phase === 'REDLINE' ? 24 : 14;
     ctx.stroke();
 
     // Inner mechanical ring
@@ -390,7 +474,7 @@ export class GameRenderer {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Robotic Eye/Core
+    // Robotic Core
     ctx.beginPath();
     ctx.arc(x, y, r * 0.35, 0, Math.PI * 2);
     ctx.fillStyle = mainColor;
@@ -401,66 +485,129 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private drawPuck(x: number, y: number, r: number, speed: number) {
+  private drawPuck(x: number, y: number, puck: Puck, speed: number, clockSpeedGHz: number) {
     const ctx = this.ctx;
     ctx.save();
+    const r = puck.radius;
+    const speedNorm = Math.min(1, speed / 2000);
 
-    const speedNorm = Math.min(1, speed / 1600);
-
-    // Glowing aura on fast shots
-    if (speedNorm > 0.3) {
+    // Dynamic lightning / fire aura on high clock speed or hypershot
+    if (puck.isHyperShot || clockSpeedGHz >= 3.0) {
       ctx.beginPath();
-      ctx.arc(x, y, r * (1 + speedNorm * 0.5), 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${speedNorm * 0.25})`;
+      ctx.arc(x, y, r * 1.8, 0, Math.PI * 2);
+      ctx.fillStyle = puck.isHyperShot ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 69, 0, 0.25)';
+      ctx.shadowColor = puck.isHyperShot ? '#ffd166' : '#ff4500';
+      ctx.shadowBlur = 20;
       ctx.fill();
     }
 
     // Puck disc
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = speedNorm > 0.5 ? '#ff2a6d' : '#00f0ff';
+    ctx.fillStyle = puck.isHyperShot ? '#fff8e7' : '#ffffff';
+    ctx.shadowColor = puck.isHyperShot ? '#ffd166' : speedNorm > 0.5 ? '#ff2a6d' : '#00f0ff';
     ctx.shadowBlur = 10 + speedNorm * 18;
     ctx.fill();
 
-    // Inner rim
-    ctx.shadowBlur = 0;
-    ctx.beginPath();
-    ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
-    ctx.strokeStyle = '#d6e2e9';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Spin indicator dot (shows puck curving rotation)
+    if (Math.abs(puck.spin) > 2) {
+      const angle = this.timeSec * puck.spin * 5;
+      const dotX = x + Math.cos(angle) * (r * 0.5);
+      const dotY = y + Math.sin(angle) * (r * 0.5);
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff2a6d';
+      ctx.fill();
+    }
 
     ctx.restore();
   }
 
-  private drawRobotHUD(state: RobotState) {
+  private drawOverclockHUD(clockSpeedGHz: number, overdriveCharge: number) {
+    const { width, height } = this.table;
+    const ctx = this.ctx;
+    ctx.save();
+
+    // Clock Speed Gauge (Center Line)
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    let clockColor = '#00f0ff';
+    if (clockSpeedGHz >= 4.0) clockColor = '#ff2a6d';
+    else if (clockSpeedGHz >= 2.5) clockColor = '#ffb703';
+
+    ctx.fillStyle = clockColor;
+    const clockText = clockSpeedGHz >= 5.0
+      ? `CLOCK: ${clockSpeedGHz.toFixed(1)} GHz [CRITICAL OVERCLOCK]`
+      : `CLOCK SPEED: ${clockSpeedGHz.toFixed(1)} GHz`;
+    ctx.fillText(clockText, width / 2, height / 2 - 12);
+
+    // Player Overdrive Charge Bar (Bottom HUD)
+    const barWidth = 220;
+    const barHeight = 8;
+    const barX = (width - barWidth) / 2;
+    const barY = height - 12;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+
+    const chargeNorm = Math.min(1, Math.max(0, overdriveCharge / 100));
+    const fillWidth = barWidth * chargeNorm;
+
+    const barColor = chargeNorm >= 1.0 ? '#ffd166' : '#00f0ff';
+    ctx.fillStyle = barColor;
+    ctx.shadowColor = barColor;
+    ctx.shadowBlur = chargeNorm >= 1.0 ? 12 : 4;
+    ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = chargeNorm >= 1.0 ? '#ffd166' : 'rgba(255, 255, 255, 0.7)';
+    ctx.fillText(
+      chargeNorm >= 1.0 ? 'OVERDRIVE READY [PRESS E / F / TAP]' : `OVERDRIVE: ${Math.round(overdriveCharge)}%`,
+      width / 2,
+      barY - 5
+    );
+
+    ctx.restore();
+  }
+
+  private drawRobotTerminal(state: RobotState, phase: BossPhase, dialogue: string | null) {
     const { width } = this.table;
     const ctx = this.ctx;
     ctx.save();
 
-    // Top status pill
+    // Robot status line
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'center';
-    let text = 'ROBOT: MONITORING';
+    let statusText = `PHASE: ${phase}`;
     let color = 'rgba(0, 240, 255, 0.7)';
 
-    if (state === 'TRACKING') {
-      text = 'TARGET ACQUIRED [PREDICTING]';
+    if (phase === 'REDLINE') {
+      statusText = 'ROBOT: REDLINE OVERHEAT [5.5 GHz]';
+      color = '#ff0033';
+    } else if (state === 'TRACKING') {
+      statusText = 'TARGET LOCKED [PREDICTING]';
       color = '#ff2a6d';
-    } else if (state === 'STRIKING') {
-      text = 'INTERCEPT [AGGRESSIVE]';
-      color = '#ffb703';
     } else if (state === 'OVERCOMMITTED') {
-      text = 'VULNERABILITY [OVERCOMMIT]';
+      statusText = 'PUNISH WINDOW [OVERCOMMIT]';
       color = '#ffd166';
-    } else if (state === 'GLITCHING') {
-      text = 'SYSTEM ANOMALY [ERROR]';
-      color = '#b5179e';
+    } else if (state === 'STUNNED') {
+      statusText = 'SYSTEM STUNNED [EMP ERROR]';
+      color = '#9d4edd';
     }
 
     ctx.fillStyle = color;
-    ctx.fillText(text, width / 2, 48);
+    ctx.fillText(statusText, width / 2, 42);
+
+    // Live Cyber Terminal Dialogue Banner
+    if (dialogue) {
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#ff2a6d';
+      ctx.shadowBlur = 10;
+      ctx.fillText(`[AI] "${dialogue}"`, width / 2, 60);
+    }
 
     ctx.restore();
   }
@@ -486,7 +633,7 @@ export class GameRenderer {
     ctx.font = '900 64px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const isPlayer = text.includes('PLAYER') || text.includes('YOU');
+    const isPlayer = text.includes('PLAYER') || text.includes('YOU') || text.includes('GOAL');
     ctx.fillStyle = isPlayer ? '#00f0ff' : '#ff2a6d';
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 30;

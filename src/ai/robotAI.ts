@@ -1,31 +1,34 @@
-// Robot air hockey AI - predictive defender with learnable human-like weaknesses.
-import { Puck, Paddle, TableConfig, Vec2 } from '../types';
+// Robot air hockey AI - predictive boss opponent with Redline phases & cyber dialogue
+import { Puck, Paddle, TableConfig, Vec2, BossPhase } from '../types';
 
 export interface AIConfig {
   reactionMs: number;     // how stale the robot's view of the puck is (80-150ms)
-  maxSpeed: number;       // paddle speed cap, px/s (900-1400)
+  maxSpeed: number;       // paddle speed cap, px/s (900-1500)
   baseError: number;      // aim error in px at low speed (24-6)
   errorPerSpeed: number;  // extra px of error per px/s of puck speed
   aggression: number;     // 0..1 chance to lunge for loose puck
 }
 
-export type RobotState = 'IDLE' | 'TRACKING' | 'STRIKING' | 'OVERCOMMITTED' | 'GLITCHING';
+export type RobotState = 'IDLE' | 'TRACKING' | 'STRIKING' | 'OVERCOMMITTED' | 'GLITCHING' | 'STUNNED';
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-export function skillToConfig(skill: number): AIConfig {
+export function skillToConfig(skill: number, phase: BossPhase = 'ANALYTICAL'): AIConfig {
   const s = clamp(skill, 0, 1);
+  const phaseSpeedBonus = phase === 'REDLINE' ? 240 : phase === 'OVERCLOCKED' ? 120 : 0;
+  const phaseReactionReduction = phase === 'REDLINE' ? 20 : phase === 'OVERCLOCKED' ? 10 : 0;
+  const phaseAggression = phase === 'REDLINE' ? 0.35 : phase === 'OVERCLOCKED' ? 0.15 : 0;
+
   return {
-    reactionMs: lerp(150, 80, s),
-    maxSpeed: lerp(900, 1400, s),
+    reactionMs: Math.max(60, lerp(150, 80, s) - phaseReactionReduction),
+    maxSpeed: lerp(950, 1450, s) + phaseSpeedBonus,
     baseError: lerp(24, 6, s),
     errorPerSpeed: lerp(0.03, 0.01, s),
-    aggression: lerp(0.3, 0.7, s),
+    aggression: Math.min(0.9, lerp(0.3, 0.7, s) + phaseAggression),
   };
 }
 
-// Unfold straight-line x into table with wall bounces
 function foldX(x: number, min: number, max: number): number {
   const span = max - min;
   if (span <= 0) return min;
@@ -60,32 +63,61 @@ export class RobotAI {
   private errorOffset = 0;
   private committedUntil = 0;
   private glitchUntil = 0;
+  private stunUntil = 0;
 
   public state: RobotState = 'IDLE';
+  public phase: BossPhase = 'ANALYTICAL';
   public currentSpeed = 0;
   public prediction: PredictionPath | null = null;
+  public currentDialogue: string | null = null;
+  public dialogueTimer = 0;
 
   constructor(private table: TableConfig, skill = 0.35) {
-    this.config = skillToConfig(skill);
+    this.config = skillToConfig(skill, this.phase);
   }
 
   setSkill(skill: number) {
-    this.config = skillToConfig(skill);
+    this.config = skillToConfig(skill, this.phase);
+  }
+
+  setPhase(newPhase: BossPhase) {
+    if (this.phase !== newPhase) {
+      this.phase = newPhase;
+      this.setSkill(this.config.maxSpeed); // Re-calculate with phase modifiers
+      if (newPhase === 'REDLINE') {
+        this.say('CRITICAL REDLINE: SYSTEM OVERHEAT 98°C', 2.5);
+      } else if (newPhase === 'OVERCLOCKED') {
+        this.say('TACTICAL ACCELERATION ENGAGED', 2.0);
+      }
+    }
+  }
+
+  say(text: string, durationSec = 2.0) {
+    this.currentDialogue = text;
+    this.dialogueTimer = durationSec;
+  }
+
+  triggerGlitch(durationMs = 600) {
+    this.glitchUntil = performance.now() + durationMs;
+    this.state = 'GLITCHING';
+    this.say('FATAL TRAJECTORY ANOMALY: ERROR', 1.5);
+  }
+
+  triggerEMPStun(durationMs = 2000) {
+    this.stunUntil = performance.now() + durationMs;
+    this.state = 'STUNNED';
+    this.say('EMP DETECTED: CIRCUITS COMPROMISED!', 2.0);
   }
 
   reset() {
     this.history = [];
     this.committedUntil = 0;
     this.glitchUntil = 0;
+    this.stunUntil = 0;
     this.state = 'IDLE';
     this.prediction = null;
     this.lastVelSign = { x: 0, y: 0 };
     this.errorOffset = 0;
-  }
-
-  triggerGlitch(durationMs = 600) {
-    this.glitchUntil = performance.now() + durationMs;
-    this.state = 'GLITCHING';
   }
 
   private perceive(now: number): Snapshot | null {
@@ -102,16 +134,32 @@ export class RobotAI {
   }
 
   update(dtSec: number, nowMs: number, puck: Puck, paddle: Paddle) {
+    if (this.dialogueTimer > 0) {
+      this.dialogueTimer -= dtSec;
+      if (this.dialogueTimer <= 0) {
+        this.currentDialogue = null;
+      }
+    }
+
     this.history.push({ t: nowMs, pos: { ...puck.pos }, vel: { ...puck.vel } });
     const seen = this.perceive(nowMs);
     if (!seen) return;
 
+    // Stunned by EMP
+    if (nowMs < this.stunUntil) {
+      this.state = 'STUNNED';
+      this.prediction = null;
+      // Stumble slowly with jitter
+      paddle.pos.x += (Math.random() - 0.5) * 80 * dtSec;
+      paddle.pos.y += (Math.random() - 0.5) * 80 * dtSec;
+      return;
+    }
+
     if (nowMs < this.glitchUntil) {
       this.state = 'GLITCHING';
       this.prediction = null;
-      // Stutter in place
-      paddle.pos.x += (Math.random() - 0.5) * 4;
-      paddle.pos.y += (Math.random() - 0.5) * 4;
+      paddle.pos.x += (Math.random() - 0.5) * 6;
+      paddle.pos.y += (Math.random() - 0.5) * 6;
       return;
     }
 
@@ -133,24 +181,25 @@ export class RobotAI {
         this.lastVelSign = { x: signX, y: signY };
       }
 
-      // The puck hits the robot paddle when puck.y reaches homeY + paddle.radius + puck.radius
+      // Defense intercept line calculation
       const interceptY = this.homeY + paddle.radius + puck.radius;
       const t = (interceptY - seen.pos.y) / seen.vel.y;
+
       if (t > 0) {
+        // Linear prediction (NOTE: If puck has high spin, the curve fools this linear calculation!)
         const predictedX = foldX(seen.pos.x + seen.vel.x * t, minX, maxX);
         target = {
           x: clamp(predictedX + this.errorOffset, minX, maxX),
           y: this.homeY,
         };
 
-        // Construct predictive path points for visual targeting line
+        // Construct predictive path points for visual reticle
         const pathPoints: Vec2[] = [{ ...seen.pos }];
         let currX = seen.pos.x;
         let currY = seen.pos.y;
         let velX = seen.vel.x;
         let remT = t;
 
-        // Step through reflections
         while (remT > 0 && pathPoints.length < 5) {
           const dtWall = velX > 0 ? (maxX - currX) / velX : (minX - currX) / velX;
           if (dtWall > 0 && dtWall < remT) {
@@ -170,7 +219,7 @@ export class RobotAI {
         this.prediction = {
           points: pathPoints,
           targetIntercept: target,
-          confidence: clamp(1 - (speed / 2000) * 0.4, 0.4, 0.95),
+          confidence: clamp(1 - (speed / 2400) * 0.45, 0.4, 0.95),
         };
       } else {
         this.prediction = null;
@@ -178,24 +227,24 @@ export class RobotAI {
     } else {
       this.prediction = null;
       const inRobotHalf = seen.pos.y < height / 2;
-      const slowish = speed < 500;
+      const slowish = speed < 600;
 
       if (nowMs < this.committedUntil) {
         this.state = 'OVERCOMMITTED';
         target = {
           x: seen.pos.x,
-          y: Math.max(seen.pos.y - paddle.radius, paddle.radius + 10),
+          y: Math.max(seen.pos.y - paddle.radius, paddle.radius + 15),
         };
       } else if (
         inRobotHalf &&
         slowish &&
-        Math.random() < this.config.aggression * dtSec * 4
+        Math.random() < this.config.aggression * dtSec * 5
       ) {
         this.state = 'STRIKING';
-        this.committedUntil = nowMs + 450;
+        this.committedUntil = nowMs + 480;
         target = {
           x: seen.pos.x,
-          y: Math.max(seen.pos.y - paddle.radius, paddle.radius + 10),
+          y: Math.max(seen.pos.y - paddle.radius, paddle.radius + 15),
         };
       } else {
         this.state = 'IDLE';
@@ -218,7 +267,6 @@ export class RobotAI {
       paddle.pos.y += dy * k;
     }
 
-    // Keep robot in top half
     paddle.pos.y = clamp(
       paddle.pos.y,
       paddle.radius,
@@ -226,7 +274,6 @@ export class RobotAI {
     );
     paddle.pos.x = clamp(paddle.pos.x, paddle.radius, width - paddle.radius);
 
-    // Calculate current velocity
     if (dtSec > 0) {
       paddle.vel.x = (paddle.pos.x - oldX) / dtSec;
       paddle.vel.y = (paddle.pos.y - oldY) / dtSec;

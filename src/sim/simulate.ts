@@ -21,6 +21,9 @@ export function runTunnelingTest(): boolean {
       pos: { x: 300, y: 700 },
       vel: { x: (Math.random() - 0.5) * 400, y: 1800 }, // Max speed 1800 px/s
       radius: DEFAULT_TABLE.puckRadius,
+      spin: 0,
+      isHyperShot: false,
+      isRailgun: false,
       trail: [],
       lastHitter: null,
       hitCount: 0,
@@ -33,6 +36,12 @@ export function runTunnelingTest(): boolean {
       radius: DEFAULT_TABLE.paddleRadius,
       color: '#00f0ff',
       glowColor: '#00f0ff',
+      parryActive: false,
+      parryTimer: 0,
+      parryCooldown: 0,
+      overdriveCharge: 0,
+      isStunned: false,
+      stunTimer: 0,
     };
 
     const dummyRobot: Paddle = {
@@ -42,6 +51,12 @@ export function runTunnelingTest(): boolean {
       radius: DEFAULT_TABLE.paddleRadius,
       color: '#ff2a6d',
       glowColor: '#ff2a6d',
+      parryActive: false,
+      parryTimer: 0,
+      parryCooldown: 0,
+      overdriveCharge: 0,
+      isStunned: false,
+      stunTimer: 0,
     };
 
     const { collisions } = physics.update(dt, puck, paddle, dummyRobot);
@@ -171,6 +186,12 @@ export function runMatchSimulation(numMatches = 1000) {
       radius: DEFAULT_TABLE.paddleRadius,
       color: '#00f0ff',
       glowColor: '#00f0ff',
+      parryActive: false,
+      parryTimer: 0,
+      parryCooldown: 0,
+      overdriveCharge: 0,
+      isStunned: false,
+      stunTimer: 0,
     };
 
     const robotPaddle: Paddle = {
@@ -180,6 +201,12 @@ export function runMatchSimulation(numMatches = 1000) {
       radius: DEFAULT_TABLE.paddleRadius,
       color: '#ff2a6d',
       glowColor: '#ff2a6d',
+      parryActive: false,
+      parryTimer: 0,
+      parryCooldown: 0,
+      overdriveCharge: 0,
+      isStunned: false,
+      stunTimer: 0,
     };
 
     let serveTo: 'player' | 'robot' = Math.random() > 0.5 ? 'player' : 'robot';
@@ -196,6 +223,9 @@ export function runMatchSimulation(numMatches = 1000) {
           y: serveTo === 'player' ? 400 : -400,
         },
         radius: DEFAULT_TABLE.puckRadius,
+        spin: 0,
+        isHyperShot: false,
+        isRailgun: false,
         trail: [],
         lastHitter: null,
         hitCount: 0,

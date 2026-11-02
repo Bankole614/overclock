@@ -11,6 +11,7 @@ export interface Particle {
   alpha: number;
   life: number;
   maxLife: number;
+  isLightning?: boolean;
 }
 
 export interface Shockwave {
@@ -27,8 +28,8 @@ export interface Shockwave {
 export class ParticleSystem {
   private pool: Particle[] = [];
   private shockwaves: Shockwave[] = [];
-  private readonly maxParticles = 400;
-  private readonly maxShockwaves = 20;
+  private readonly maxParticles = 600;
+  private readonly maxShockwaves = 25;
 
   constructor() {
     for (let i = 0; i < this.maxParticles; i++) {
@@ -74,6 +75,7 @@ export class ParticleSystem {
         p.active = true;
         p.x = pos.x;
         p.y = pos.y;
+        p.isLightning = false;
 
         let angle: number;
         if (direction) {
@@ -83,13 +85,36 @@ export class ParticleSystem {
           angle = Math.random() * Math.PI * 2;
         }
 
-        const spd = (120 + Math.random() * 380) * speedMultiplier;
+        const spd = (120 + Math.random() * 420) * speedMultiplier;
         p.vx = Math.cos(angle) * spd;
         p.vy = Math.sin(angle) * spd;
         p.size = 2 + Math.random() * 3.5;
         p.color = color;
         p.alpha = 1;
-        p.maxLife = 0.25 + Math.random() * 0.35;
+        p.maxLife = 0.25 + Math.random() * 0.4;
+        p.life = p.maxLife;
+        spawned++;
+      }
+    }
+  }
+
+  public emitLightningArcs(pos: Vec2, count: number, color = '#ffd166') {
+    let spawned = 0;
+    for (let i = 0; i < this.maxParticles && spawned < count; i++) {
+      const p = this.pool[i];
+      if (!p.active) {
+        p.active = true;
+        p.x = pos.x + (Math.random() - 0.5) * 20;
+        p.y = pos.y + (Math.random() - 0.5) * 20;
+        p.isLightning = true;
+        const angle = Math.random() * Math.PI * 2;
+        const spd = 80 + Math.random() * 250;
+        p.vx = Math.cos(angle) * spd;
+        p.vy = Math.sin(angle) * spd;
+        p.size = 2.5 + Math.random() * 3;
+        p.color = color;
+        p.alpha = 1;
+        p.maxLife = 0.15 + Math.random() * 0.2;
         p.life = p.maxLife;
         spawned++;
       }
@@ -113,15 +138,27 @@ export class ParticleSystem {
     }
   }
 
+  public emitParryBlast(pos: Vec2) {
+    this.emitShockwave(pos, 180, '#ffd166', 550);
+    this.emitShockwave(pos, 90, '#00f0ff', 350);
+    this.emitLightningArcs(pos, 25, '#ffffff');
+    this.emitSparks(pos, 35, '#ffd166', 1.8);
+  }
+
+  public emitEMPWave(pos: Vec2) {
+    this.emitShockwave(pos, 320, '#00f0ff', 650);
+    this.emitLightningArcs(pos, 40, '#00f0ff');
+    this.emitSparks(pos, 50, '#9d4edd', 1.5);
+  }
+
   public emitGoalExplosion(pos: Vec2, color: string) {
-    this.emitShockwave(pos, 160, color, 450);
-    this.emitSparks(pos, 90, color, 1.8);
-    // secondary burst
-    this.emitSparks(pos, 50, '#ffffff', 1.2);
+    this.emitShockwave(pos, 200, color, 450);
+    this.emitSparks(pos, 100, color, 2.0);
+    this.emitSparks(pos, 60, '#ffffff', 1.3);
+    this.emitLightningArcs(pos, 30, color);
   }
 
   public update(dt: number) {
-    // Update particles
     for (let i = 0; i < this.maxParticles; i++) {
       const p = this.pool[i];
       if (p.active) {
@@ -131,14 +168,17 @@ export class ParticleSystem {
         } else {
           p.x += p.vx * dt;
           p.y += p.vy * dt;
-          p.vx *= 0.94;
-          p.vy *= 0.94;
+          if (p.isLightning) {
+            p.x += (Math.random() - 0.5) * 8;
+            p.y += (Math.random() - 0.5) * 8;
+          }
+          p.vx *= 0.93;
+          p.vy *= 0.93;
           p.alpha = Math.max(0, p.life / p.maxLife);
         }
       }
     }
 
-    // Update shockwaves
     for (let i = 0; i < this.maxShockwaves; i++) {
       const s = this.shockwaves[i];
       if (s.active) {
@@ -160,8 +200,10 @@ export class ParticleSystem {
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
         ctx.strokeStyle = s.color;
-        ctx.lineWidth = 3 * s.alpha;
-        ctx.globalAlpha = s.alpha * 0.8;
+        ctx.lineWidth = 3.5 * s.alpha;
+        ctx.globalAlpha = s.alpha * 0.85;
+        ctx.shadowColor = s.color;
+        ctx.shadowBlur = 10;
         ctx.stroke();
         ctx.restore();
       }

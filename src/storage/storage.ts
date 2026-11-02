@@ -1,8 +1,8 @@
 import { GameSettings, LifetimeStats } from '../types';
 
-const SETTINGS_KEY = 'overclock_settings_v1';
-const STATS_KEY = 'overclock_stats_v1';
-const SKILL_KEY = 'overclock_ai_skill_v1';
+const SETTINGS_KEY = 'overclock_settings_v2';
+const STATS_KEY = 'overclock_stats_v2';
+const SKILL_KEY = 'overclock_ai_skill_v2';
 
 export class StorageManager {
   static loadSettings(): GameSettings {
@@ -15,6 +15,8 @@ export class StorageManager {
       reduceMotion: false,
       vibration: true,
       showPredictionLine: true,
+      arenaBumpers: true,
+      curveShots: true,
     };
 
     try {
@@ -45,6 +47,7 @@ export class StorageManager {
       fastestWinSeconds: null,
       totalPointsScored: 0,
       totalPointsConceded: 0,
+      totalParries: 0,
     };
 
     try {
@@ -70,12 +73,14 @@ export class StorageManager {
     playerWon: boolean,
     playerScore: number,
     robotScore: number,
-    durationSec: number
+    durationSec: number,
+    parries = 0
   ): LifetimeStats {
     const stats = this.loadStats();
     stats.matchesPlayed++;
     stats.totalPointsScored += playerScore;
     stats.totalPointsConceded += robotScore;
+    stats.totalParries += parries;
 
     if (playerWon) {
       stats.matchesWon++;

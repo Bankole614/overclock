@@ -12,6 +12,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const hudRobotScore = document.getElementById('hud-robot-score')!;
   const hudPlayerScore = document.getElementById('hud-player-score')!;
   const hudRobotBadge = document.getElementById('hud-robot-badge')!;
+  const hudPhaseBadge = document.getElementById('hud-phase-badge')!;
+  const actionBar = document.getElementById('action-bar')!;
 
   const titleScreen = document.getElementById('title-screen')!;
   const resultScreen = document.getElementById('result-screen')!;
@@ -31,18 +33,23 @@ window.addEventListener('DOMContentLoaded', () => {
   const btnStats = document.getElementById('btn-stats')!;
   const btnStatsClose = document.getElementById('btn-stats-close')!;
 
+  const btnTriggerParry = document.getElementById('btn-trigger-parry')!;
+  const btnTriggerOverdrive = document.getElementById('btn-trigger-overdrive')!;
+
   // Result Elements
   const resultTitle = document.getElementById('result-title')!;
   const resPlayerScore = document.getElementById('res-player-score')!;
   const resRobotScore = document.getElementById('res-robot-score')!;
   const insightText = document.getElementById('insight-text')!;
   const statMaxSpeed = document.getElementById('stat-max-speed')!;
+  const statMaxClock = document.getElementById('stat-max-clock')!;
+  const statParries = document.getElementById('stat-parries')!;
   const statTotalHits = document.getElementById('stat-total-hits')!;
-  const statExploits = document.getElementById('stat-exploits')!;
 
   // Settings Toggles
   const toggleSound = document.getElementById('setting-sound') as HTMLInputElement;
   const toggleMusic = document.getElementById('setting-music') as HTMLInputElement;
+  const toggleBumpers = document.getElementById('setting-bumpers') as HTMLInputElement;
   const toggleLaser = document.getElementById('setting-laser') as HTMLInputElement;
   const toggleVibration = document.getElementById('setting-vibration') as HTMLInputElement;
   const toggleReduceMotion = document.getElementById('setting-reduce-motion') as HTMLInputElement;
@@ -50,14 +57,16 @@ window.addEventListener('DOMContentLoaded', () => {
   // Career Stats Elements
   const statCareerPlayed = document.getElementById('stat-career-played')!;
   const statCareerWinrate = document.getElementById('stat-career-winrate')!;
+  const statCareerParries = document.getElementById('stat-career-parries')!;
   const statCareerStreak = document.getElementById('stat-career-streak')!;
   const statCareerFastest = document.getElementById('stat-career-fastest')!;
   const statCareerRobot = document.getElementById('stat-career-robot')!;
 
-  // Sync settings state
+  // Sync settings
   const currentSettings = StorageManager.loadSettings();
   toggleSound.checked = currentSettings.soundEnabled;
   toggleMusic.checked = currentSettings.musicEnabled;
+  toggleBumpers.checked = currentSettings.arenaBumpers;
   toggleLaser.checked = currentSettings.showPredictionLine;
   toggleVibration.checked = currentSettings.vibration;
   toggleReduceMotion.checked = currentSettings.reduceMotion;
@@ -66,6 +75,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const updated = {
       soundEnabled: toggleSound.checked,
       musicEnabled: toggleMusic.checked,
+      arenaBumpers: toggleBumpers.checked,
       showPredictionLine: toggleLaser.checked,
       vibration: toggleVibration.checked,
       reduceMotion: toggleReduceMotion.checked,
@@ -73,9 +83,10 @@ window.addEventListener('DOMContentLoaded', () => {
     StorageManager.saveSettings({ ...currentSettings, ...updated });
     game.sound.updateSettings(updated);
     game.renderer.settings = { ...game.renderer.settings, ...updated };
+    game.bumpers.forEach((b) => (b.active = updated.arenaBumpers));
   };
 
-  [toggleSound, toggleMusic, toggleLaser, toggleVibration, toggleReduceMotion].forEach((input) => {
+  [toggleSound, toggleMusic, toggleBumpers, toggleLaser, toggleVibration, toggleReduceMotion].forEach((input) => {
     input.addEventListener('change', saveAndApplySettings);
   });
 
@@ -84,6 +95,7 @@ window.addEventListener('DOMContentLoaded', () => {
     statCareerPlayed.textContent = stats.matchesPlayed.toString();
     const wr = stats.matchesPlayed > 0 ? Math.round((stats.matchesWon / stats.matchesPlayed) * 100) : 0;
     statCareerWinrate.textContent = `${wr}%`;
+    statCareerParries.textContent = stats.totalParries.toString();
     statCareerStreak.textContent = stats.bestStreak.toString();
     statCareerFastest.textContent = stats.fastestWinSeconds ? `${stats.fastestWinSeconds}s` : '--';
     statCareerRobot.textContent = game.director.getRobotModelName();
@@ -94,6 +106,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (state === 'TITLE') {
       titleScreen.classList.remove('hidden');
       hud.classList.add('hidden');
+      actionBar.classList.add('hidden');
       resultScreen.classList.add('hidden');
       pauseScreen.classList.add('hidden');
     } else if (state === 'PLAYING' || state === 'COUNTDOWN' || state === 'POINT_SCORED') {
@@ -101,11 +114,14 @@ window.addEventListener('DOMContentLoaded', () => {
       resultScreen.classList.add('hidden');
       pauseScreen.classList.add('hidden');
       hud.classList.remove('hidden');
+      actionBar.classList.remove('hidden');
       hudRobotBadge.textContent = game.director.getRobotModelName();
+      hudPhaseBadge.textContent = game.robot.phase;
     } else if (state === 'PAUSED') {
       pauseScreen.classList.remove('hidden');
     } else if (state === 'MATCH_END') {
       hud.classList.add('hidden');
+      actionBar.classList.add('hidden');
       pauseScreen.classList.add('hidden');
     }
   };
@@ -113,6 +129,7 @@ window.addEventListener('DOMContentLoaded', () => {
   game.onScoreChange = (score) => {
     hudRobotScore.textContent = score.robot.toString();
     hudPlayerScore.textContent = score.player.toString();
+    hudPhaseBadge.textContent = game.robot.phase;
   };
 
   game.onMatchEnd = (insight, stats) => {
@@ -125,8 +142,9 @@ window.addEventListener('DOMContentLoaded', () => {
     insightText.textContent = insight;
 
     statMaxSpeed.textContent = stats.maxPuckSpeed.toLocaleString();
+    statMaxClock.textContent = `${stats.maxClockSpeedGHz || 1.0} GHz`;
+    statParries.textContent = stats.parriesCount.toString();
     statTotalHits.textContent = stats.totalHits.toString();
-    statExploits.textContent = stats.overcommitGoals.toString();
 
     resultScreen.classList.remove('hidden');
   };
@@ -183,7 +201,15 @@ window.addEventListener('DOMContentLoaded', () => {
     statsModal.classList.add('hidden');
   });
 
-  // Handle Window Resizing for DPR and responsive canvas
+  // Action buttons
+  btnTriggerParry.addEventListener('click', () => {
+    game.triggerPlayerParry();
+  });
+
+  btnTriggerOverdrive.addEventListener('click', () => {
+    game.triggerPlayerOverdrive();
+  });
+
   const handleResize = () => {
     game.renderer.setupDPR();
     game.input.updateCanvasBounds();
@@ -191,6 +217,5 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', handleResize);
   window.addEventListener('orientationchange', handleResize);
 
-  // Start engine loop
   game.init();
 });

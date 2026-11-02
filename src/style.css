@@ -70,7 +70,7 @@ canvas#gameCanvas {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: rgba(7, 9, 14, 0.85);
+  background: rgba(7, 9, 14, 0.88);
   backdrop-filter: blur(8px);
   z-index: 20;
   padding: 24px;
@@ -86,7 +86,7 @@ canvas#gameCanvas {
 
 /* Title Screen */
 .title-box {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .game-title {
@@ -111,12 +111,31 @@ canvas#gameCanvas {
 .version-badge {
   display: inline-block;
   margin-top: 10px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 4px;
   border: 1px solid var(--border-neon);
   font-size: 0.75rem;
   color: var(--cyan-glow);
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
+  background: rgba(0, 240, 255, 0.08);
+}
+
+.controls-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+  letter-spacing: 0.5px;
+}
+
+.controls-pill b {
+  color: var(--text-main);
 }
 
 /* Buttons */
@@ -222,6 +241,79 @@ canvas#gameCanvas {
   border-color: var(--cyan-glow);
 }
 
+/* In-Game Action Bar */
+#action-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+#action-bar.hidden {
+  display: none;
+}
+
+.action-btn {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1.5px solid;
+  background: rgba(7, 9, 14, 0.85);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 90px;
+}
+
+.action-btn:active {
+  transform: scale(0.94);
+}
+
+.parry-btn {
+  border-color: var(--amber-warn);
+  box-shadow: 0 0 15px rgba(255, 183, 3, 0.3);
+}
+
+.parry-btn .btn-key {
+  font-size: 0.62rem;
+  color: #ffb703;
+  letter-spacing: 0.5px;
+}
+
+.parry-btn .btn-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1.5px;
+}
+
+.overdrive-btn {
+  border-color: var(--cyan-glow);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+}
+
+.overdrive-btn .btn-key {
+  font-size: 0.62rem;
+  color: var(--cyan-glow);
+  letter-spacing: 0.5px;
+}
+
+.overdrive-btn .btn-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1.5px;
+}
+
 /* Result Screen */
 .result-box {
   background: var(--card-bg);
@@ -299,18 +391,18 @@ canvas#gameCanvas {
 
 .stat-val {
   font-family: monospace;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #fff;
 }
 
 .stat-lbl {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
   text-transform: uppercase;
 }
 
-/* Modal Dialog (Settings & Stats) */
+/* Modal Dialog */
 .modal-card {
   background: var(--card-bg);
   border: 1px solid var(--border-neon);

@@ -11,9 +11,11 @@ export class InputManager {
   private keyboardPos: Vec2 | null = null;
   private isUsingKeyboard = false;
 
-  public maxPlayerSpeed = 2200; // px/s speed cap to prevent teleportation
+  public maxPlayerSpeed = 2400; // Fast and responsive
   public isTouchDevice = false;
   public onPauseToggle: (() => void) | null = null;
+  public onParryTrigger: (() => void) | null = null;
+  public onOverdriveTrigger: (() => void) | null = null;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -52,6 +54,19 @@ export class InputManager {
       this.targetPos.y = clientY * this.scaleY;
     });
 
+    // Right-click or mouse down on canvas for Parry
+    this.canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (this.onParryTrigger) this.onParryTrigger();
+    });
+
+    this.canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 2) {
+        // Right click
+        if (this.onParryTrigger) this.onParryTrigger();
+      }
+    });
+
     // Touch movement with vertical offset
     const handleTouch = (e: TouchEvent) => {
       if (e.touches.length === 0) return;
@@ -64,7 +79,6 @@ export class InputManager {
       const clientX = touch.clientX - this.canvasRect.left;
       const clientY = touch.clientY - this.canvasRect.top;
 
-      // Small vertical offset (approx 55 logical units upward) so finger doesn't block the paddle
       const verticalOffset = 55;
       this.targetPos.x = clientX * this.scaleX;
       this.targetPos.y = clientY * this.scaleY - verticalOffset;
@@ -85,6 +99,13 @@ export class InputManager {
       this.keys[e.key.toLowerCase()] = true;
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(e.key.toLowerCase())) {
         this.isUsingKeyboard = true;
+      }
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        if (this.onParryTrigger) this.onParryTrigger();
+      }
+      if (e.key.toLowerCase() === 'e' || e.key.toLowerCase() === 'f') {
+        if (this.onOverdriveTrigger) this.onOverdriveTrigger();
       }
       if (e.key === 'Escape') {
         if (this.onPauseToggle) this.onPauseToggle();
@@ -108,16 +129,27 @@ export class InputManager {
 
   public update(dt: number, paddle: Paddle) {
     const { width, height, paddleRadius } = this.table;
-    const minY = height / 2 + paddleRadius + 5; // cannot cross center line
+    const minY = height / 2 + paddleRadius + 5;
     const maxY = height - paddleRadius;
     const minX = paddleRadius;
     const maxX = width - paddleRadius;
 
     paddle.prevPos = { ...paddle.pos };
 
+    // Update Parry Timers
+    if (paddle.parryTimer > 0) {
+      paddle.parryTimer -= dt;
+      if (paddle.parryTimer <= 0) {
+        paddle.parryActive = false;
+      }
+    }
+    if (paddle.parryCooldown > 0) {
+      paddle.parryCooldown -= dt;
+    }
+
     if (this.isUsingKeyboard) {
       if (!this.keyboardPos) this.keyboardPos = { ...paddle.pos };
-      const kbSpeed = 1200;
+      const kbSpeed = 1300;
       let dx = 0;
       let dy = 0;
 
@@ -156,7 +188,6 @@ export class InputManager {
       paddle.pos.y += dy * k;
     }
 
-    // Calculate actual paddle velocity
     if (dt > 0) {
       paddle.vel.x = (paddle.pos.x - paddle.prevPos.x) / dt;
       paddle.vel.y = (paddle.pos.y - paddle.prevPos.y) / dt;

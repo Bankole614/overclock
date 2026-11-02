@@ -1,4 +1,4 @@
-// Web Audio API procedural sound engine - zero external sound assets needed.
+// Web Audio API procedural sound engine with Overclocked Arcade audio synthesis
 import { GameSettings } from '../types';
 
 export class SoundEngine {
@@ -29,6 +29,8 @@ export class SoundEngine {
     reduceMotion: false,
     vibration: true,
     showPredictionLine: true,
+    arenaBumpers: true,
+    curveShots: true,
   };
 
   constructor(settings?: Partial<GameSettings>) {
@@ -107,10 +109,10 @@ export class SoundEngine {
     }
   }
 
-  public updatePuckHum(puckSpeed: number) {
+  public updatePuckHum(puckSpeed: number, clockSpeedGHz = 1.0) {
     if (!this.ctx || !this.humOsc || !this.humGain || !this.settings.soundEnabled) return;
-    const norm = Math.min(1, Math.max(0, puckSpeed / 1800));
-    const targetFreq = 70 + norm * 140;
+    const norm = Math.min(1, Math.max(0, puckSpeed / 2400));
+    const targetFreq = (70 + norm * 150) * (0.8 + clockSpeedGHz * 0.2);
     const targetGain = 0.02 + norm * 0.08;
 
     const t = this.ctx.currentTime;
@@ -144,11 +146,12 @@ export class SoundEngine {
     }
   }
 
-  public updateRobotServo(robotSpeed: number) {
+  public updateRobotServo(robotSpeed: number, isRedline = false) {
     if (!this.ctx || !this.servoOsc || !this.servoGain || !this.settings.soundEnabled) return;
-    const norm = Math.min(1, Math.max(0, robotSpeed / 1400));
-    const targetFreq = 300 + norm * 700;
-    const targetGain = norm > 0.05 ? norm * 0.04 : 0.0001;
+    const norm = Math.min(1, Math.max(0, robotSpeed / 1600));
+    const mult = isRedline ? 1.5 : 1.0;
+    const targetFreq = (300 + norm * 800) * mult;
+    const targetGain = norm > 0.05 ? norm * (isRedline ? 0.07 : 0.04) : 0.0001;
 
     const t = this.ctx.currentTime;
     this.servoOsc.frequency.setTargetAtTime(targetFreq, t, 0.04);
@@ -168,11 +171,11 @@ export class SoundEngine {
 
       this.tensionOsc1 = this.ctx.createOscillator();
       this.tensionOsc1.type = 'sawtooth';
-      this.tensionOsc1.frequency.setValueAtTime(55, this.ctx.currentTime); // A1
+      this.tensionOsc1.frequency.setValueAtTime(55, this.ctx.currentTime);
 
       this.tensionOsc2 = this.ctx.createOscillator();
       this.tensionOsc2.type = 'sawtooth';
-      this.tensionOsc2.frequency.setValueAtTime(55.6, this.ctx.currentTime); // detuned
+      this.tensionOsc2.frequency.setValueAtTime(55.6, this.ctx.currentTime);
 
       this.tensionOsc1.connect(this.tensionFilter);
       this.tensionOsc2.connect(this.tensionFilter);
@@ -186,69 +189,171 @@ export class SoundEngine {
     }
   }
 
-  public setTensionLevel(level: number) {
-    // level: 0 (calm) to 1 (match point max tension)
+  public setTensionLevel(level: number, clockSpeedGHz = 1.0) {
     if (!this.ctx || !this.tensionGain || !this.tensionFilter) return;
     const t = this.ctx.currentTime;
     if (level <= 0 || !this.settings.musicEnabled) {
       this.tensionGain.gain.setTargetAtTime(0.0001, t, 0.2);
     } else {
-      this.tensionGain.gain.setTargetAtTime(0.12 * level, t, 0.2);
-      this.tensionFilter.frequency.setTargetAtTime(120 + level * 350, t, 0.3);
+      const clockMult = Math.min(2.0, 0.8 + clockSpeedGHz * 0.25);
+      this.tensionGain.gain.setTargetAtTime(0.14 * level, t, 0.2);
+      this.tensionFilter.frequency.setTargetAtTime((120 + level * 350) * clockMult, t, 0.25);
     }
   }
 
   // --- Sound Effects ---
 
-  public playPaddleHit(speed: number) {
+  public playPaddleHit(speed: number, isHyper = false) {
     if (!this.ctx || !this.sfxGain || !this.settings.soundEnabled) return;
     this.triggerHaptic(15);
     const t = this.ctx.currentTime;
-    const norm = Math.min(1, Math.max(0.1, speed / 1800));
+    const norm = Math.min(1, Math.max(0.1, speed / 2200));
 
-    // Punchy transient thud
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 
-    osc.type = 'sine';
-    const startFreq = 160 + norm * 240;
+    osc.type = isHyper ? 'sawtooth' : 'sine';
+    const startFreq = isHyper ? 400 + norm * 400 : 160 + norm * 260;
     osc.frequency.setValueAtTime(startFreq, t);
-    osc.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(50, t + 0.14);
 
-    gain.gain.setValueAtTime(0.2 + norm * 0.4, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    gain.gain.setValueAtTime((0.25 + norm * 0.45) * (isHyper ? 1.3 : 1.0), t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
 
     osc.connect(gain);
     gain.connect(this.sfxGain);
 
     osc.start(t);
-    osc.stop(t + 0.13);
+    osc.stop(t + 0.15);
 
-    // Mechanical snap/click layer
+    // Mechanical snap
     const snapOsc = this.ctx.createOscillator();
     const snapGain = this.ctx.createGain();
     snapOsc.type = 'square';
-    snapOsc.frequency.setValueAtTime(600 + norm * 500, t);
-    snapGain.gain.setValueAtTime(0.08 + norm * 0.15, t);
-    snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    snapOsc.frequency.setValueAtTime(600 + norm * 600, t);
+    snapGain.gain.setValueAtTime(0.1 + norm * 0.15, t);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
 
     snapOsc.connect(snapGain);
     snapGain.connect(this.sfxGain);
 
     snapOsc.start(t);
-    snapOsc.stop(t + 0.05);
+    snapOsc.stop(t + 0.06);
+  }
+
+  // PERFECT PARRY SOUND: Sub bass drop + resonant crystal harmonic chime
+  public playParry() {
+    if (!this.ctx || !this.sfxGain || !this.settings.soundEnabled) return;
+    this.triggerHaptic([30, 50, 40]);
+    const t = this.ctx.currentTime;
+
+    // Sub-bass impact drop
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(140, t);
+    subOsc.frequency.exponentialRampToValueAtTime(30, t + 0.28);
+    subGain.gain.setValueAtTime(0.6, t);
+    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.sfxGain);
+    subOsc.start(t);
+    subOsc.stop(t + 0.29);
+
+    // Resonant counter chime
+    [880, 1320, 1760].forEach((freq) => {
+      const chimeOsc = this.ctx!.createOscillator();
+      const chimeGain = this.ctx!.createGain();
+      chimeOsc.type = 'triangle';
+      chimeOsc.frequency.setValueAtTime(freq, t);
+      chimeGain.gain.setValueAtTime(0.2, t);
+      chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+      chimeOsc.connect(chimeGain);
+      chimeGain.connect(this.sfxGain!);
+      chimeOsc.start(t);
+      chimeOsc.stop(t + 0.36);
+    });
+  }
+
+  // ARENA BUMPER HIT: Pinball electro-pop
+  public playBumper() {
+    if (!this.ctx || !this.sfxGain || !this.settings.soundEnabled) return;
+    this.triggerHaptic(25);
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(587.33, t); // D5
+    osc.frequency.exponentialRampToValueAtTime(293.66, t + 0.15);
+
+    gain.gain.setValueAtTime(0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.16);
+  }
+
+  // RAILGUN SMASH: High-tech laser charging crackle & blast
+  public playRailgun() {
+    if (!this.ctx || !this.sfxGain || !this.settings.soundEnabled) return;
+    this.triggerHaptic([50, 30, 80]);
+    const t = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1400, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.4);
+
+    gain.gain.setValueAtTime(0.5, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(t);
+    osc.stop(t + 0.42);
+  }
+
+  // ROBOT CHATTER VOCODER CHIRP: Procedural robotic syllables
+  public playRobotSpeech() {
+    if (!this.ctx || !this.sfxGain || !this.settings.soundEnabled) return;
+    const t = this.ctx.currentTime;
+    const syllables = 3;
+    for (let i = 0; i < syllables; i++) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      const f = 280 + Math.random() * 320;
+      osc.frequency.setValueAtTime(f, t + i * 0.05);
+
+      gain.gain.setValueAtTime(0.08, t + i * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.05 + 0.04);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+
+      osc.start(t + i * 0.05);
+      osc.stop(t + i * 0.05 + 0.045);
+    }
   }
 
   public playWallTick(speed: number) {
     if (!this.ctx || !this.sfxGain || !this.settings.soundEnabled) return;
     this.triggerHaptic(8);
     const t = this.ctx.currentTime;
-    const norm = Math.min(1, Math.max(0.1, speed / 1800));
+    const norm = Math.min(1, Math.max(0.1, speed / 2200));
 
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(450 + norm * 350, t);
+    osc.frequency.setValueAtTime(450 + norm * 400, t);
     osc.frequency.exponentialRampToValueAtTime(180, t + 0.06);
 
     gain.gain.setValueAtTime(0.1 + norm * 0.25, t);
@@ -288,7 +393,6 @@ export class SoundEngine {
     const t = this.ctx.currentTime;
 
     if (isPlayerScored) {
-      // Triumphant cyber horn (major triad)
       const freqs = [220, 277.18, 329.63, 440];
       freqs.forEach((f) => {
         const osc = this.ctx!.createOscillator();
@@ -301,7 +405,7 @@ export class SoundEngine {
         filter.frequency.setValueAtTime(800, t);
         filter.frequency.linearRampToValueAtTime(2400, t + 0.3);
 
-        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.setValueAtTime(0.14, t);
         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
 
         osc.connect(filter);
@@ -312,14 +416,13 @@ export class SoundEngine {
         osc.stop(t + 0.95);
       });
     } else {
-      // Low sinister siren / defeat sub blast
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(110, t);
       osc.frequency.linearRampToValueAtTime(75, t + 0.8);
 
-      gain.gain.setValueAtTime(0.3, t);
+      gain.gain.setValueAtTime(0.35, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.85);
 
       osc.connect(gain);
@@ -338,7 +441,7 @@ export class SoundEngine {
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    const freq = num === 0 ? 880 : 440; // High beep on GO
+    const freq = num === 0 ? 880 : 440;
     const duration = num === 0 ? 0.3 : 0.12;
 
     osc.frequency.setValueAtTime(freq, t);
@@ -363,7 +466,7 @@ export class SoundEngine {
     osc.frequency.setValueAtTime(220, t + 0.04);
     osc.frequency.setValueAtTime(740, t + 0.08);
 
-    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.setValueAtTime(0.2, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
 
     osc.connect(gain);
