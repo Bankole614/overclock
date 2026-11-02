@@ -138,6 +138,15 @@ export class BossManager {
     return false;
   }
 
+  public getNextBossId(currentId: BossId): BossId | null {
+    const ladder: BossId[] = ['VECTOR', 'VIPER', 'TITAN', 'PHANTOM', 'APEX'];
+    const idx = ladder.indexOf(currentId);
+    if (idx >= 0 && idx < ladder.length - 1) {
+      return ladder[idx + 1];
+    }
+    return null;
+  }
+
   public recordDefeat(id: BossId) {
     if (this.bosses[id]) {
       this.bosses[id].defeated = true;

@@ -14,6 +14,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const hudPlayerScore = document.getElementById('hud-player-score')!;
   const hudRobotBadge = document.getElementById('hud-robot-badge')!;
   const hudPhaseBadge = document.getElementById('hud-phase-badge')!;
+  const hudSeriesScore = document.getElementById('hud-series-score')!;
   const actionBar = document.getElementById('action-bar')!;
 
   // Modals & Screens
@@ -44,11 +45,13 @@ window.addEventListener('DOMContentLoaded', () => {
   const btnPauseMenu = document.getElementById('btn-pause-menu')!;
 
   // Result Elements
+  const btnNextBoss = document.getElementById('btn-next-boss')!;
   const btnRematch = document.getElementById('btn-rematch')!;
   const btnResultMenu = document.getElementById('btn-result-menu')!;
   const resultTitle = document.getElementById('result-title')!;
   const resPlayerScore = document.getElementById('res-player-score')!;
   const resRobotScore = document.getElementById('res-robot-score')!;
+  const resSeriesSummary = document.getElementById('res-series-summary')!;
   const resultChipsEarned = document.getElementById('result-chips-earned')!;
   const insightText = document.getElementById('insight-text')!;
   const statMaxSpeed = document.getElementById('stat-max-speed')!;
@@ -77,6 +80,29 @@ window.addEventListener('DOMContentLoaded', () => {
   // Boss Modal Elements
   const bossCardsGrid = document.getElementById('boss-cards-grid')!;
   const btnBossClose = document.getElementById('btn-boss-close')!;
+  const formatButtons = document.querySelectorAll<HTMLButtonElement>('.format-btn');
+  let currentSeriesFormat: 'BO1' | 'BO3' | 'BO5' | 'FIRST_TO_3' = 'BO1';
+
+  formatButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      formatButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSeriesFormat = (btn.dataset.format as any) || 'BO1';
+      game.setSeriesFormat(currentSeriesFormat);
+    });
+  });
+
+  const updateSeriesScoreUI = () => {
+    if (game.series.targetGamesToWin > 1) {
+      hudSeriesScore.textContent = `SERIES: ${game.series.playerGames} - ${game.series.robotGames} (${game.series.format})`;
+      hudSeriesScore.classList.remove('hidden');
+    } else if (game.series.format === 'FIRST_TO_3') {
+      hudSeriesScore.textContent = 'BLITZ (FIRST TO 3)';
+      hudSeriesScore.classList.remove('hidden');
+    } else {
+      hudSeriesScore.classList.add('hidden');
+    }
+  };
 
   // Multiplayer Modal Elements
   const btnHostRoom = document.getElementById('btn-host-room')!;
@@ -168,6 +194,8 @@ window.addEventListener('DOMContentLoaded', () => {
           bossModal.classList.add('hidden');
           game.mode = 'SOLO_BOSS';
           game.selectBoss(boss.id);
+          game.startSeries(currentSeriesFormat);
+          updateSeriesScoreUI();
         });
       }
 
@@ -310,6 +338,7 @@ window.addEventListener('DOMContentLoaded', () => {
         hudRobotBadge.textContent = game.mode === 'MULTIPLAYER_HOST' ? 'OPPONENT [GUEST]' : 'OPPONENT [HOST]';
         hudPhaseBadge.textContent = 'ONLINE 1v1';
       }
+      updateSeriesScoreUI();
     } else if (state === 'PAUSED') {
       pauseScreen.classList.remove('hidden');
     } else if (state === 'MATCH_END') {
@@ -325,6 +354,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (game.mode === 'SOLO_BOSS') {
       hudPhaseBadge.textContent = game.robot.phase;
     }
+    updateSeriesScoreUI();
   };
 
   game.onMatchEnd = (insight, stats) => {
@@ -337,10 +367,36 @@ window.addEventListener('DOMContentLoaded', () => {
     insightText.textContent = insight;
     resultChipsEarned.textContent = `+${stats.chipsEarned} OVERCLOCK CHIPS EARNED`;
 
+    if (resSeriesSummary) {
+      if (game.series.targetGamesToWin > 1) {
+        resSeriesSummary.textContent = `SERIES RESULT: ${game.series.playerGames} - ${game.series.robotGames} (${game.series.format})`;
+        resSeriesSummary.classList.remove('hidden');
+      } else if (game.series.format === 'FIRST_TO_3') {
+        resSeriesSummary.textContent = `BLITZ MATCH (FIRST TO 3)`;
+        resSeriesSummary.classList.remove('hidden');
+      } else {
+        resSeriesSummary.classList.add('hidden');
+      }
+    }
+
     statMaxSpeed.textContent = stats.maxPuckSpeed.toLocaleString();
     statMaxClock.textContent = `${stats.maxClockSpeedGHz || 1.0} GHz`;
     statParries.textContent = stats.parriesCount.toString();
     statTotalHits.textContent = stats.totalHits.toString();
+
+    // Next Boss button logic
+    if (game.mode === 'SOLO_BOSS' && playerWon) {
+      const nextBossId = game.bossManager.getNextBossId(game.bossManager.currentBossId);
+      if (nextBossId) {
+        const nextBoss = game.bossManager.bosses[nextBossId];
+        btnNextBoss.textContent = `NEXT LEVEL: ${nextBoss.name} →`;
+        btnNextBoss.classList.remove('hidden');
+      } else {
+        btnNextBoss.classList.add('hidden');
+      }
+    } else {
+      btnNextBoss.classList.add('hidden');
+    }
 
     resultScreen.classList.remove('hidden');
   };
@@ -370,6 +426,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
   btnShopClose.addEventListener('click', () => {
     shopModal.classList.add('hidden');
+  });
+
+  btnNextBoss.addEventListener('click', () => {
+    resultScreen.classList.add('hidden');
+    const started = game.startNextBoss();
+    if (started) {
+      updateSeriesScoreUI();
+    } else {
+      game.state = 'TITLE';
+      if (game.onStateChange) game.onStateChange('TITLE');
+    }
   });
 
   btnRematch.addEventListener('click', () => {

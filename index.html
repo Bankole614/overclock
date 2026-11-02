@@ -22,6 +22,7 @@
           </div>
 
           <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="hud-series-score" class="hidden" style="font-size: 0.72rem; color: #ffb703; font-weight: 800; letter-spacing: 1px; background: rgba(0,0,0,0.5); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,183,3,0.3);">GAMES: 0 - 0</span>
             <button id="btn-pause-toggle" class="hud-btn">PAUSE</button>
           </div>
 
@@ -78,9 +79,21 @@
         <div id="boss-modal" class="overlay-screen hidden">
           <div class="modal-card wide-modal">
             <h3 class="modal-header">ARCADE BOSS LADDER</h3>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
               Defeat each machine to unlock the next opponent in the cyber gauntlet.
             </p>
+
+            <!-- Series Format Selector -->
+            <div class="format-selection-box">
+              <span class="format-label">SERIES FORMAT:</span>
+              <div class="format-btn-group">
+                <button class="format-btn active" data-format="BO1">BEST OF 1</button>
+                <button class="format-btn" data-format="BO3">BEST OF 3</button>
+                <button class="format-btn" data-format="BO5">BEST OF 5</button>
+                <button class="format-btn" data-format="FIRST_TO_3">BLITZ (3 PTS)</button>
+              </div>
+            </div>
+
             <div id="boss-cards-grid" class="boss-grid">
               <!-- Rendered dynamically -->
             </div>
@@ -160,6 +173,11 @@
               <span id="res-robot-score" style="color: var(--crimson-glow);">7</span>
             </div>
 
+            <!-- Series Result Banner -->
+            <div id="res-series-summary" class="chips-earned-pill hidden" style="background: rgba(0, 240, 255, 0.15); border-color: var(--cyan-glow); color: var(--cyan-glow);">
+              SERIES: 2 - 1 (BEST OF 3)
+            </div>
+
             <!-- Chips Award Banner -->
             <div id="result-chips-earned" class="chips-earned-pill">
               +60 OVERCLOCK CHIPS EARNED
@@ -193,7 +211,8 @@
               </div>
             </div>
 
-            <button id="btn-rematch" class="btn-primary" style="width: 100%; margin-top: 8px;">REMATCH</button>
+            <button id="btn-next-boss" class="btn-primary" style="background: linear-gradient(135deg, #00ff88, #00b4d8); width: 100%; margin-top: 8px;">NEXT BOSS →</button>
+            <button id="btn-rematch" class="btn-primary" style="width: 100%; margin-top: 4px;">REMATCH</button>
             <button id="btn-result-menu" class="btn-secondary" style="width: 100%;">MAIN MENU</button>
           </div>
         </div>

@@ -53,6 +53,19 @@ export class Game {
   public clockSpeedGHz = 1.0;
   public rallyHits = 0;
 
+  // Series & Competition Format
+  public series: {
+    playerGames: number;
+    robotGames: number;
+    targetGamesToWin: number;
+    format: 'BO1' | 'BO3' | 'BO5' | 'FIRST_TO_3';
+  } = {
+    playerGames: 0,
+    robotGames: 0,
+    targetGamesToWin: 1,
+    format: 'BO1',
+  };
+
   // Game flow & timing
   public score: Score = { player: 0, robot: 0 };
   public winningScore = 7;
@@ -222,8 +235,40 @@ export class Game {
   public selectBoss(bossId: BossId) {
     if (this.bossManager.selectBoss(bossId)) {
       this.applyBossTuning(bossId);
-      this.startMatch();
     }
+  }
+
+  public setSeriesFormat(format: 'BO1' | 'BO3' | 'BO5' | 'FIRST_TO_3') {
+    let target = 1;
+    let points = 7;
+    if (format === 'BO3') target = 2;
+    if (format === 'BO5') target = 3;
+    if (format === 'FIRST_TO_3') {
+      target = 1;
+      points = 3;
+    }
+    this.winningScore = points;
+    this.series = {
+      playerGames: 0,
+      robotGames: 0,
+      targetGamesToWin: target,
+      format,
+    };
+  }
+
+  public startSeries(format: 'BO1' | 'BO3' | 'BO5' | 'FIRST_TO_3' = 'BO1') {
+    this.setSeriesFormat(format);
+    this.startMatch();
+  }
+
+  public startNextBoss(): boolean {
+    const nextId = this.bossManager.getNextBossId(this.bossManager.currentBossId);
+    if (nextId) {
+      this.selectBoss(nextId);
+      this.startSeries(this.series.format);
+      return true;
+    }
+    return false;
   }
 
   public refreshEquippedCosmetics() {
@@ -266,7 +311,7 @@ export class Game {
   }
 
   public restartMatch() {
-    this.startMatch();
+    this.startSeries(this.series.format);
   }
 
   public triggerPlayerParry() {
@@ -458,7 +503,34 @@ export class Game {
     this.puck2 = null;
 
     if (this.score.player >= this.winningScore || this.score.robot >= this.winningScore) {
-      this.endMatch(this.score.player >= this.winningScore);
+      const gameWinner = this.score.player >= this.winningScore ? 'player' : 'robot';
+      if (gameWinner === 'player') {
+        this.series.playerGames++;
+      } else {
+        this.series.robotGames++;
+      }
+
+      const seriesOver =
+        this.series.playerGames >= this.series.targetGamesToWin ||
+        this.series.robotGames >= this.series.targetGamesToWin;
+
+      if (seriesOver) {
+        const playerWonSeries = this.series.playerGames >= this.series.targetGamesToWin;
+        this.endMatch(playerWonSeries);
+      } else {
+        // Intermission between games in a series
+        this.state = 'POINT_SCORED';
+        this.pointPauseTimer = 2.2;
+        const gameNum = this.series.playerGames + this.series.robotGames;
+        this.goalScoredBanner = `GAME ${gameNum} TO ${gameWinner.toUpperCase()}! [${this.series.playerGames} - ${this.series.robotGames}]`;
+        this.sound.playGoalHorn(gameWinner === 'player');
+        this.renderer.triggerShake(1.5, 0.4);
+
+        // Reset points for next game in series
+        this.score = { player: 0, robot: 0 };
+        if (this.onScoreChange) this.onScoreChange(this.score);
+        if (this.onStateChange) this.onStateChange(this.state);
+      }
     } else {
       if (this.onStateChange) this.onStateChange(this.state);
     }
@@ -472,6 +544,8 @@ export class Game {
     this.tracker.stats.durationSeconds = Math.round(durationSec);
     this.tracker.stats.winner = playerWon ? 'player' : 'robot';
     this.tracker.stats.maxClockSpeedGHz = Number(this.clockSpeedGHz.toFixed(1));
+    this.tracker.stats.seriesFormat = this.series.format;
+    this.tracker.stats.seriesGames = `${this.series.playerGames} - ${this.series.robotGames}`;
 
     const chipsEarned = playerWon ? 80 + this.tracker.stats.parriesCount * 15 : 25;
     this.tracker.stats.chipsEarned = chipsEarned;

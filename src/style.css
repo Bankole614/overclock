@@ -337,6 +337,56 @@ canvas#gameCanvas {
   margin-bottom: 16px;
 }
 
+/* Series Format Selector */
+.format-selection-box {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.format-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--amber-warn);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.format-btn-group {
+  display: flex;
+  gap: 6px;
+}
+
+.format-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-muted);
+  padding: 6px 4px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.format-btn:hover {
+  border-color: var(--cyan-glow);
+  color: #fff;
+}
+
+.format-btn.active {
+  background: var(--amber-warn);
+  color: #030a16;
+  border-color: var(--amber-warn);
+  font-weight: 900;
+}
+
 /* Boss Grid */
 .boss-grid {
   display: flex;

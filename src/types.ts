@@ -72,6 +72,15 @@ export type GameState =
 
 export type GameMode = 'SOLO_BOSS' | 'MULTIPLAYER_HOST' | 'MULTIPLAYER_GUEST';
 
+export type SeriesFormat = 'BO1' | 'BO3' | 'BO5' | 'FIRST_TO_3';
+
+export interface SeriesScore {
+  playerGames: number;
+  robotGames: number;
+  targetGamesToWin: number;
+  format: SeriesFormat;
+}
+
 export type BossId = 'VECTOR' | 'VIPER' | 'TITAN' | 'PHANTOM' | 'APEX';
 
 export type BossPhase = 'ANALYTICAL' | 'OVERCLOCKED' | 'REDLINE';
@@ -145,6 +154,8 @@ export interface MatchStats {
   crossTableGoals: number;
   ralliesOver5Hits: number;
   chipsEarned: number;
+  seriesFormat?: SeriesFormat;
+  seriesGames?: string;
   winner: 'player' | 'robot' | 'guest' | null;
 }
 
