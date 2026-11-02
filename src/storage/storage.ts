@@ -16,7 +16,7 @@ export class StorageManager {
       vibration: true,
       showPredictionLine: true,
       curveShots: true,
-      multiPuckOverload: true,
+      multiPuckOverload: false,
     };
 
     try {

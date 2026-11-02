@@ -459,11 +459,12 @@ export class Game {
     }
   }
 
-  private handleGoal(scorer: 'player' | 'robot', isGolden = false) {
+  private handleGoal(scorer: 'player' | 'robot') {
     this.state = 'POINT_SCORED';
     this.pointPauseTimer = 1.35;
 
-    const pointsAwarded = isGolden ? 2 : 1;
+    // Strict authentic air hockey rule: 1 goal = exactly 1 point
+    const pointsAwarded = 1;
     const robotWasOvercommitted = this.robot.isOvercommitted();
     const crossTableAngle = Math.abs(this.puck.vel.x) > 650;
 
@@ -471,17 +472,17 @@ export class Game {
 
     if (scorer === 'player') {
       this.score.player += pointsAwarded;
-      this.goalScoredBanner = isGolden ? 'GOLDEN GOAL! (+2)' : 'GOAL!';
+      this.goalScoredBanner = 'GOAL!';
       this.sound.playGoalHorn(true);
       this.renderer.triggerShake(1.4, 0.4);
       this.particles.emitGoalExplosion({ x: this.table.width / 2, y: 15 }, '#00f0ff');
       this.robot.triggerGlitch(900);
       this.sound.playGlitchSound();
       this.playerPaddle.overdriveCharge = Math.min(100, this.playerPaddle.overdriveCharge + 25);
-      this.shopManager.addChips(20 * pointsAwarded);
+      this.shopManager.addChips(25);
     } else {
       this.score.robot += pointsAwarded;
-      this.goalScoredBanner = isGolden ? 'MACHINE GOLDEN GOAL!' : 'MACHINE SCORES';
+      this.goalScoredBanner = 'MACHINE SCORES';
       this.sound.playGoalHorn(false);
       this.renderer.triggerShake(1.4, 0.4);
       this.particles.emitGoalExplosion({ x: this.table.width / 2, y: this.table.height - 15 }, '#ff2a6d');
@@ -622,9 +623,8 @@ export class Game {
         this.clockSpeedGHz = Math.min(5.5, 1.0 + this.rallyHits * 0.32);
         this.physics.setMaxSpeedLimit(1800 + (this.clockSpeedGHz - 1.0) * 180);
 
-        // 20% chance of Golden Puck on high-frequency rally
-        if (this.rallyHits >= 5 && !this.puck.isGolden && Math.random() < 0.2) {
-          this.puck.isGolden = true;
+        // In intense rallies, trigger kinetic spark feedback
+        if (this.rallyHits >= 5 && Math.random() < 0.2) {
           this.particles.emitParryBlast(this.puck.pos);
           this.sound.playWallTick(800);
         }
@@ -675,7 +675,7 @@ export class Game {
         this.robotPaddle
       );
       if (res2.goal) {
-        this.handleGoal(res2.goal, false);
+        this.handleGoal(res2.goal);
       }
     }
 
@@ -711,7 +711,7 @@ export class Game {
             vel: this.puck.vel,
             spin: this.puck.spin,
             isHyper: this.puck.isHyperShot,
-            isGolden: this.puck.isGolden,
+            isGolden: false,
           },
           hostPaddle: { pos: this.playerPaddle.pos, parry: this.playerPaddle.parryActive },
           guestPaddle: { pos: this.robotPaddle.pos, parry: this.robotPaddle.parryActive },
@@ -725,7 +725,7 @@ export class Game {
 
     // 7. Check Goal
     if (goal) {
-      this.handleGoal(goal, this.puck.isGolden);
+      this.handleGoal(goal);
     }
   }
 
