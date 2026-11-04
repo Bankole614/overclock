@@ -25,6 +25,8 @@ export class InputManager {
   public maxPlayerSpeed = 3500; // Generous mouse speed cap
   public maxTouchSpeed = 25000; // Instant 1:1 follow for touch swipes
   public isTouchDevice = false;
+  public playerPaddleRadius = 34;
+  public onMobileDetected: (() => void) | null = null;
   public onPauseToggle: (() => void) | null = null;
   public onParryTrigger: (() => void) | null = null;
   public onOverdriveTrigger: (() => void) | null = null;
@@ -37,6 +39,16 @@ export class InputManager {
       x: table.width / 2,
       y: table.height - 120,
     };
+
+    const isMobile =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.matchMedia('(pointer: coarse)').matches);
+    if (isMobile) {
+      this.isTouchDevice = true;
+      this.playerPaddleRadius = 48;
+    }
 
     this.setupListeners();
     this.updateCanvasBounds();
@@ -94,7 +106,11 @@ export class InputManager {
 
     // Touch handlers for mobile
     const onTouchStart = (e: TouchEvent) => {
-      this.isTouchDevice = true;
+      if (!this.isTouchDevice) {
+        this.isTouchDevice = true;
+        this.playerPaddleRadius = 48;
+        if (this.onMobileDetected) this.onMobileDetected();
+      }
       this.isUsingKeyboard = false;
 
       for (let i = 0; i < e.changedTouches.length; i++) {
@@ -115,7 +131,8 @@ export class InputManager {
           this.updateCanvasBounds();
           if (!this.canvasRect) return;
 
-          const { paddleRadius, height, width } = this.table;
+          const paddleRadius = this.playerPaddleRadius;
+          const { height, width } = this.table;
           const minY = height / 2 + paddleRadius + 5;
           const maxY = height - paddleRadius;
           const minX = paddleRadius;
@@ -127,7 +144,7 @@ export class InputManager {
           const rawX = (clientX - this.offsetX) / this.scale;
           const rawY = (clientY - this.offsetY) / this.scale;
 
-          const verticalOffset = 45;
+          const verticalOffset = this.isTouchDevice ? paddleRadius + 18 : 45;
           const startX = Math.min(maxX, Math.max(minX, rawX));
           let startY: number;
 
@@ -169,7 +186,8 @@ export class InputManager {
           if (!this.canvasRect) this.updateCanvasBounds();
           if (!this.canvasRect) return;
 
-          const { paddleRadius, height, width } = this.table;
+          const paddleRadius = this.playerPaddleRadius;
+          const { height, width } = this.table;
           const minY = height / 2 + paddleRadius + 5;
           const maxY = height - paddleRadius;
           const minX = paddleRadius;
@@ -279,7 +297,8 @@ export class InputManager {
   }
 
   public update(dt: number, paddle: Paddle) {
-    const { width, height, paddleRadius } = this.table;
+    const { width, height } = this.table;
+    const paddleRadius = paddle.radius;
     const minY = height / 2 + paddleRadius + 5;
     const maxY = height - paddleRadius;
     const minX = paddleRadius;

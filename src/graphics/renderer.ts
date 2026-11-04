@@ -600,7 +600,7 @@ export class GameRenderer {
     const { width, height } = this.table;
     const ctx = this.ctx;
     ctx.save();
-    ctx.font = '900 96px monospace';
+    ctx.font = text.length > 2 ? '900 64px monospace' : '900 96px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';

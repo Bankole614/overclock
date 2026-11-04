@@ -75,6 +75,7 @@ export class Game {
   public goalScoredBanner: string | null = null;
   public pointPauseTimer = 0;
   public lastConceded: 'player' | 'robot' = Math.random() > 0.5 ? 'player' : 'robot';
+  private prePauseState: GameState = 'PLAYING';
 
   // Fixed timestep loop
   private readonly fixedDt = 1 / 120;
@@ -124,11 +125,18 @@ export class Game {
     };
 
     // Player Paddle
+    const isMobile =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.matchMedia('(pointer: coarse)').matches);
+    const initialPaddleRadius = isMobile ? 48 : this.table.paddleRadius;
+
     this.playerPaddle = {
       pos: { x: this.table.width / 2, y: this.table.height - 120 },
       vel: { x: 0, y: 0 },
       prevPos: { x: this.table.width / 2, y: this.table.height - 120 },
-      radius: this.table.paddleRadius,
+      radius: initialPaddleRadius,
       color: equipped.paddleColor,
       glowColor: equipped.paddleColor,
       skinId: this.shopManager.state.equippedPaddle,
@@ -171,6 +179,10 @@ export class Game {
     this.input.onPauseToggle = () => this.togglePause();
     this.input.onParryTrigger = () => this.triggerPlayerParry();
     this.input.onOverdriveTrigger = () => this.triggerPlayerOverdrive();
+    this.input.onMobileDetected = () => {
+      this.playerPaddle.radius = 48;
+      this.input.playerPaddleRadius = 48;
+    };
   }
 
   private setupMultiplayer() {
@@ -359,25 +371,35 @@ export class Game {
     }
   }
 
-  private startCountdown() {
+  public startCountdown(full = true) {
     this.state = 'COUNTDOWN';
-    this.countdownTimer = 3.2;
-    this.countdownText = '3';
     this.goalScoredBanner = null;
     this.clockSpeedGHz = 1.0;
     this.rallyHits = 0;
     this.puck.isGolden = false;
-    this.sound.playCountdown(3);
+
+    if (full) {
+      this.countdownTimer = 3.2;
+      this.countdownText = '3';
+      this.sound.playCountdown(3);
+    } else {
+      // Snappy quick serve between points
+      this.countdownTimer = 0.55;
+      this.countdownText = 'SERVE';
+      this.sound.playCountdown(0);
+    }
     if (this.onStateChange) this.onStateChange(this.state);
   }
 
   public togglePause() {
     if (this.mode !== 'SOLO_BOSS') return; // Cannot pause live multiplayer
-    if (this.state === 'PLAYING') {
+    if (this.state === 'PLAYING' || this.state === 'COUNTDOWN' || this.state === 'POINT_SCORED') {
+      this.prePauseState = this.state;
       this.state = 'PAUSED';
       if (this.onStateChange) this.onStateChange(this.state);
     } else if (this.state === 'PAUSED') {
-      this.state = 'PLAYING';
+      this.state = this.prePauseState;
+      this.lastTime = performance.now();
       if (this.onStateChange) this.onStateChange(this.state);
     }
   }
@@ -461,7 +483,7 @@ export class Game {
 
   private handleGoal(scorer: 'player' | 'robot') {
     this.state = 'POINT_SCORED';
-    this.pointPauseTimer = 1.35;
+    this.pointPauseTimer = 0.95;
 
     // Strict authentic air hockey rule: 1 goal = exactly 1 point
     const pointsAwarded = 1;
@@ -737,31 +759,48 @@ export class Game {
 
     if (this.state === 'COUNTDOWN') {
       this.countdownTimer -= frameTime;
-      const count = Math.ceil(this.countdownTimer);
-      if (count > 0) {
-        if (this.countdownText !== count.toString()) {
-          this.countdownText = count.toString();
-          this.sound.playCountdown(count);
-        }
-      } else if (this.countdownTimer > -0.6) {
-        if (this.countdownText !== 'GO!') {
-          this.countdownText = 'GO!';
-          this.sound.playCountdown(0);
+      if (this.countdownText === 'SERVE') {
+        if (this.countdownTimer <= 0) {
+          this.countdownText = null;
+          this.state = 'PLAYING';
           this.launchServe(this.lastConceded);
+          if (this.onStateChange) this.onStateChange(this.state);
         }
       } else {
-        this.countdownText = null;
-        this.state = 'PLAYING';
-        if (this.onStateChange) this.onStateChange(this.state);
+        const count = Math.ceil(this.countdownTimer);
+        if (count > 0) {
+          if (this.countdownText !== count.toString()) {
+            this.countdownText = count.toString();
+            this.sound.playCountdown(count);
+          }
+        } else if (this.countdownTimer > -0.6) {
+          if (this.countdownText !== 'GO!') {
+            this.countdownText = 'GO!';
+            this.sound.playCountdown(0);
+            this.launchServe(this.lastConceded);
+          }
+        } else {
+          this.countdownText = null;
+          this.state = 'PLAYING';
+          if (this.onStateChange) this.onStateChange(this.state);
+        }
       }
     }
 
     if (this.state === 'POINT_SCORED') {
       this.pointPauseTimer -= frameTime;
       if (this.pointPauseTimer <= 0) {
-        const nextServeTo = this.goalScoredBanner?.includes('PLAYER') || this.goalScoredBanner?.includes('GOAL') ? 'robot' : 'player';
+        const nextServeTo =
+          this.goalScoredBanner?.includes('PLAYER') || this.goalScoredBanner?.includes('GOAL')
+            ? 'robot'
+            : 'player';
         this.resetPositions(nextServeTo);
-        this.startCountdown();
+        this.lastConceded = nextServeTo;
+
+        // If a new series game just started (scores reset to 0-0), do full 3-2-1 countdown;
+        // Otherwise do a snappy instant serve between regular points!
+        const isFreshGame = this.score.player === 0 && this.score.robot === 0;
+        this.startCountdown(isFreshGame);
       }
     }
 
