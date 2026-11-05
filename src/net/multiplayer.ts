@@ -5,18 +5,23 @@ import { Vec2, Score } from '../types';
 export interface NetworkStatePacket {
   puck: { pos: Vec2; vel: Vec2; spin: number; isHyper: boolean; isGolden: boolean };
   puck2?: { pos: Vec2; vel: Vec2; spin: number };
-  hostPaddle: { pos: Vec2; parry: boolean };
-  guestPaddle: { pos: Vec2; parry: boolean };
+  hostPaddle: { pos: Vec2; vel: Vec2; radius: number; parry: boolean };
+  guestPaddle: { pos: Vec2; vel: Vec2; radius: number; parry: boolean };
   score: Score;
   clockSpeed: number;
   goalBanner: string | null;
   state: string;
+  countdownText: string | null;
+  seq?: number;
 }
 
 export interface ClientInputPacket {
   pos: Vec2;
+  vel: Vec2;
+  radius: number;
   parry: boolean;
   overdrive: boolean;
+  timestamp: number;
 }
 
 export type NetRole = 'HOST' | 'GUEST' | 'OFFLINE';
@@ -80,7 +85,7 @@ export class MultiplayerManager {
       this.peer = new Peer();
 
       this.peer.on('open', () => {
-        this.conn = this.peer!.connect(targetId, { reliable: false });
+        this.conn = this.peer!.connect(targetId, { reliable: true });
         this.setupConnection();
       });
 

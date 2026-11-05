@@ -84,6 +84,9 @@ export class Game {
   private hitStopFrames = 0;
   private isRunning = false;
   private netSyncTimer = 0;
+  private lastClientInputTime = 0;
+  private lastStateSeq = 0;
+  private netPacketSeq = 0;
 
   // Callbacks for UI
   public onStateChange: ((state: GameState) => void) | null = null;
@@ -189,11 +192,24 @@ export class Game {
     // When guest sends input to host
     this.net.onClientInput = (input) => {
       if (this.mode === 'MULTIPLAYER_HOST') {
+        if (input.timestamp && input.timestamp < this.lastClientInputTime) return;
+        this.lastClientInputTime = input.timestamp || 0;
+
         // Mirrored coordinates for host
         const targetX = this.table.width - input.pos.x;
         const targetY = this.table.height - input.pos.y;
+        this.robotPaddle.prevPos = { ...this.robotPaddle.pos };
         this.robotPaddle.pos.x = targetX;
-        this.robotPaddle.pos.y = Math.min(this.table.height / 2 - this.robotPaddle.radius - 5, Math.max(this.robotPaddle.radius, targetY));
+        this.robotPaddle.pos.y = Math.min(
+          this.table.height / 2 - this.robotPaddle.radius - 5,
+          Math.max(this.robotPaddle.radius, targetY)
+        );
+        this.robotPaddle.vel.x = -input.vel.x;
+        this.robotPaddle.vel.y = -input.vel.y;
+
+        if (input.radius) {
+          this.robotPaddle.radius = input.radius;
+        }
 
         if (input.parry && this.robotPaddle.parryCooldown <= 0) {
           this.robotPaddle.parryActive = true;
@@ -201,24 +217,55 @@ export class Game {
           this.robotPaddle.parryCooldown = 0.65;
           this.particles.emitShockwave(this.robotPaddle.pos, 55, '#ffd166', 300);
         }
+
+        if (input.overdrive) {
+          this.puck.isRailgun = true;
+          this.puck.isHyperShot = true;
+          this.particles.emitEMPWave(this.robotPaddle.pos);
+          this.sound.playRailgun();
+          this.renderer.triggerShake(1.5, 0.4);
+        }
       }
     };
 
     // When guest receives authoritative state packet from host
     this.net.onStatePacket = (packet) => {
       if (this.mode === 'MULTIPLAYER_GUEST') {
+        if (packet.seq !== undefined && packet.seq < this.lastStateSeq) return;
+        if (packet.seq !== undefined) this.lastStateSeq = packet.seq;
+
         // Mirrored coordinates: Guest sees their paddle at the bottom!
-        this.puck.pos.x = this.table.width - packet.puck.pos.x;
-        this.puck.pos.y = this.table.height - packet.puck.pos.y;
-        this.puck.vel.x = -packet.puck.vel.x;
-        this.puck.vel.y = -packet.puck.vel.y;
+        const puckX = this.table.width - packet.puck.pos.x;
+        const puckY = this.table.height - packet.puck.pos.y;
+        const puckVelX = -packet.puck.vel.x;
+        const puckVelY = -packet.puck.vel.y;
+
+        const errX = puckX - this.puck.pos.x;
+        const errY = puckY - this.puck.pos.y;
+        const errDist = Math.hypot(errX, errY);
+
+        if (errDist > 45 || this.state !== 'PLAYING') {
+          this.puck.pos.x = puckX;
+          this.puck.pos.y = puckY;
+        } else {
+          this.puck.pos.x += errX * 0.45;
+          this.puck.pos.y += errY * 0.45;
+        }
+
+        this.puck.vel.x = puckVelX;
+        this.puck.vel.y = puckVelY;
         this.puck.spin = -packet.puck.spin;
         this.puck.isHyperShot = packet.puck.isHyper;
         this.puck.isGolden = packet.puck.isGolden;
 
         // Opponent (Host) is at top
+        this.robotPaddle.prevPos = { ...this.robotPaddle.pos };
         this.robotPaddle.pos.x = this.table.width - packet.hostPaddle.pos.x;
         this.robotPaddle.pos.y = this.table.height - packet.hostPaddle.pos.y;
+        this.robotPaddle.vel.x = -packet.hostPaddle.vel.x;
+        this.robotPaddle.vel.y = -packet.hostPaddle.vel.y;
+        if (packet.hostPaddle.radius) this.robotPaddle.radius = packet.hostPaddle.radius;
+        this.robotPaddle.parryActive = packet.hostPaddle.parry;
 
         // Scores (mirrored)
         this.score.player = packet.score.robot;
@@ -227,6 +274,11 @@ export class Game {
 
         this.clockSpeedGHz = packet.clockSpeed;
         this.goalScoredBanner = packet.goalBanner;
+        this.countdownText = packet.countdownText;
+        if (packet.state && this.state !== packet.state) {
+          this.state = packet.state as GameState;
+          if (this.onStateChange) this.onStateChange(this.state);
+        }
       }
     };
   }
@@ -318,6 +370,12 @@ export class Game {
     this.playerPaddle.overdriveCharge = 35;
     this.puck2 = null;
 
+    if (this.mode !== 'SOLO_BOSS') {
+      this.robotPaddle.color = '#ff2a6d';
+      this.robotPaddle.glowColor = '#ff2a6d';
+      this.robotPaddle.radius = this.playerPaddle.radius;
+    }
+
     this.resetPositions(this.lastConceded);
     this.startCountdown();
   }
@@ -338,8 +396,11 @@ export class Game {
       if (this.mode === 'MULTIPLAYER_GUEST') {
         this.net.sendInput({
           pos: this.playerPaddle.pos,
+          vel: this.playerPaddle.vel,
+          radius: this.playerPaddle.radius,
           parry: true,
           overdrive: false,
+          timestamp: performance.now(),
         });
       }
     }
@@ -364,8 +425,11 @@ export class Game {
       if (this.mode === 'MULTIPLAYER_GUEST') {
         this.net.sendInput({
           pos: this.playerPaddle.pos,
+          vel: this.playerPaddle.vel,
+          radius: this.playerPaddle.radius,
           parry: false,
           overdrive: true,
+          timestamp: performance.now(),
         });
       }
     }
@@ -482,8 +546,22 @@ export class Game {
   }
 
   private handleGoal(scorer: 'player' | 'robot') {
+    // Strictly prevent duplicate goal triggering across multiple fixed steps
+    if (this.state !== 'PLAYING') return;
+
     this.state = 'POINT_SCORED';
     this.pointPauseTimer = 0.95;
+    this.accumulator = 0; // Clear physics accumulator
+
+    // Freeze pucks and displace beyond trigger zone
+    this.puck.vel.x = 0;
+    this.puck.vel.y = 0;
+    this.puck.pos.y = scorer === 'player' ? -this.table.puckRadius - 40 : this.table.height + this.table.puckRadius + 40;
+    if (this.puck2) {
+      this.puck2.vel.x = 0;
+      this.puck2.vel.y = 0;
+      this.puck2.pos.y = scorer === 'player' ? -this.table.puckRadius - 40 : this.table.height + this.table.puckRadius + 40;
+    }
 
     // Strict authentic air hockey rule: 1 goal = exactly 1 point
     const pointsAwarded = 1;
@@ -603,6 +681,7 @@ export class Game {
   }
 
   private fixedStep() {
+    if (this.state !== 'PLAYING') return;
     const now = performance.now();
 
     // 1. Update Player Input
@@ -611,10 +690,66 @@ export class Game {
     if (this.mode === 'MULTIPLAYER_GUEST') {
       this.net.sendInput({
         pos: this.playerPaddle.pos,
+        vel: this.playerPaddle.vel,
+        radius: this.playerPaddle.radius,
         parry: this.playerPaddle.parryActive,
         overdrive: false,
+        timestamp: performance.now(),
       });
-      return; // Guest runs on authoritative host packets
+
+      // Client-side prediction for puck between 60Hz host updates
+      if (this.state === 'PLAYING') {
+        this.puck.pos.x += this.puck.vel.x * this.fixedDt;
+        this.puck.pos.y += this.puck.vel.y * this.fixedDt;
+
+        // Side wall bounce
+        if (this.puck.pos.x - this.puck.radius < 0) {
+          this.puck.pos.x = this.puck.radius;
+          this.puck.vel.x = Math.abs(this.puck.vel.x) * this.table.wallRestitution;
+        } else if (this.puck.pos.x + this.puck.radius > this.table.width) {
+          this.puck.pos.x = this.table.width - this.puck.radius;
+          this.puck.vel.x = -Math.abs(this.puck.vel.x) * this.table.wallRestitution;
+        }
+
+        // Local collision check between guest's own mallet and puck so hits are instant
+        const dx = this.puck.pos.x - this.playerPaddle.pos.x;
+        const dy = this.puck.pos.y - this.playerPaddle.pos.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = this.puck.radius + this.playerPaddle.radius;
+
+        if (dist < minDist && dist > 0.001) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const relVelX = this.puck.vel.x - this.playerPaddle.vel.x;
+          const relVelY = this.puck.vel.y - this.playerPaddle.vel.y;
+          const normalVel = relVelX * nx + relVelY * ny;
+
+          if (normalVel < 0) {
+            const impulse = -1.8 * normalVel;
+            this.puck.vel.x += nx * impulse + this.playerPaddle.vel.x * 0.85;
+            this.puck.vel.y += ny * impulse + this.playerPaddle.vel.y * 0.85;
+            this.puck.pos.x = this.playerPaddle.pos.x + nx * (minDist + 1);
+            this.puck.pos.y = this.playerPaddle.pos.y + ny * (minDist + 1);
+
+            this.sound.playPaddleHit(Math.hypot(this.puck.vel.x, this.puck.vel.y), this.puck.isHyperShot);
+            this.particles.emitSparks(this.puck.pos, 16, this.playerPaddle.color, 1.2, { x: nx, y: ny });
+          }
+        }
+      }
+      return; // Guest runs local prediction between authoritative host packets
+    }
+
+    if (this.mode === 'MULTIPLAYER_HOST') {
+      // Tick parry timer down for guest paddle on host
+      if (this.robotPaddle.parryTimer > 0) {
+        this.robotPaddle.parryTimer -= this.fixedDt;
+        if (this.robotPaddle.parryTimer <= 0) {
+          this.robotPaddle.parryActive = false;
+        }
+      }
+      if (this.robotPaddle.parryCooldown > 0) {
+        this.robotPaddle.parryCooldown -= this.fixedDt;
+      }
     }
 
     // 2. Update Robot AI (Solo Boss Mode)
@@ -735,12 +870,24 @@ export class Game {
             isHyper: this.puck.isHyperShot,
             isGolden: false,
           },
-          hostPaddle: { pos: this.playerPaddle.pos, parry: this.playerPaddle.parryActive },
-          guestPaddle: { pos: this.robotPaddle.pos, parry: this.robotPaddle.parryActive },
+          hostPaddle: {
+            pos: this.playerPaddle.pos,
+            vel: this.playerPaddle.vel,
+            radius: this.playerPaddle.radius,
+            parry: this.playerPaddle.parryActive,
+          },
+          guestPaddle: {
+            pos: this.robotPaddle.pos,
+            vel: this.robotPaddle.vel,
+            radius: this.robotPaddle.radius,
+            parry: this.robotPaddle.parryActive,
+          },
           score: this.score,
           clockSpeed: this.clockSpeedGHz,
           goalBanner: this.goalScoredBanner,
           state: this.state,
+          countdownText: this.countdownText,
+          seq: ++this.netPacketSeq,
         });
       }
     }
@@ -758,6 +905,18 @@ export class Game {
     this.lastTime = timestamp;
 
     if (this.state === 'COUNTDOWN') {
+      this.input.update(frameTime, this.playerPaddle);
+      if (this.mode === 'MULTIPLAYER_GUEST') {
+        this.net.sendInput({
+          pos: this.playerPaddle.pos,
+          vel: this.playerPaddle.vel,
+          radius: this.playerPaddle.radius,
+          parry: false,
+          overdrive: false,
+          timestamp: performance.now(),
+        });
+      }
+
       this.countdownTimer -= frameTime;
       if (this.countdownText === 'SERVE') {
         if (this.countdownTimer <= 0) {
@@ -808,7 +967,7 @@ export class Game {
       this.hitStopFrames--;
     } else if (this.state === 'PLAYING') {
       this.accumulator += frameTime;
-      while (this.accumulator >= this.fixedDt) {
+      while (this.accumulator >= this.fixedDt && this.state === 'PLAYING') {
         this.prevState = this.currState;
         this.fixedStep();
         this.currState = this.captureRenderState();

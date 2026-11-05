@@ -39,12 +39,14 @@
           <button id="btn-trigger-parry" class="action-btn parry-btn" type="button">
             <i data-lucide="shield"></i>
             <span class="btn-name">Parry</span>
-            <span class="btn-key">Space / R-click</span>
+            <span class="btn-key key-desktop">Space / R-click</span>
+            <span class="btn-key key-mobile">Tap to deflect</span>
           </button>
           <button id="btn-trigger-overdrive" class="action-btn overdrive-btn" type="button">
             <i data-lucide="zap"></i>
             <span class="btn-name">Overdrive</span>
-            <span class="btn-key">Key E</span>
+            <span class="btn-key key-desktop">Key E</span>
+            <span class="btn-key key-mobile">Tap at 100%</span>
           </button>
         </div>
 
@@ -60,9 +62,9 @@
           </div>
 
           <ul class="controls-pill">
-            <li><i data-lucide="mouse-pointer-2"></i><span><b>Mouse / touch</b> move paddle</span></li>
-            <li><i data-lucide="shield"></i><span><b>Space / right-click</b> perfect parry</span></li>
-            <li><i data-lucide="zap"></i><span><b>E</b> overdrive EMP smash</span></li>
+            <li><i data-lucide="mouse-pointer-2"></i><span><b class="key-desktop">Mouse</b><b class="key-mobile">Swipe anywhere</b> to drive mallet</span></li>
+            <li><i data-lucide="shield"></i><span><b class="key-desktop">Space / right-click</b><b class="key-mobile">Tap Parry</b> to reflect &amp; charge</span></li>
+            <li><i data-lucide="zap"></i><span><b class="key-desktop">Key E</b><b class="key-mobile">Tap Overdrive</b> at 100% EMP smash</span></li>
           </ul>
 
           <div class="menu-stack">
@@ -129,6 +131,7 @@
 
         <!-- Shop -->
         <div id="shop-modal" class="overlay-screen hidden">
+          <button id="btn-shop-close" class="btn-secondary boss-back-btn" type="button"><i data-lucide="arrow-left"></i> Back</button>
           <div class="modal-card wide-modal">
             <div class="modal-top">
               <h3 class="modal-header"><i data-lucide="shopping-bag"></i> Holo-shop</h3>
@@ -142,7 +145,6 @@
             </div>
 
             <div id="shop-items-grid" class="shop-grid"></div>
-            <button id="btn-shop-close" class="btn-secondary btn-block" type="button"><i data-lucide="x"></i> Close shop</button>
           </div>
         </div>
 
