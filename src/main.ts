@@ -597,6 +597,65 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', handleResize);
   window.addEventListener('orientationchange', handleResize);
 
+  // --- PWA Installation & Prompt Management ---
+  let deferredInstallPrompt: any = null;
+  const btnInstallPwa = document.getElementById('btn-install-pwa');
+  const btnSettingsInstall = document.getElementById('btn-settings-install');
+  const settingRowInstall = document.getElementById('setting-row-install');
+  const iosInstallModal = document.getElementById('ios-install-modal');
+  const btnCloseIosInstall = document.getElementById('btn-close-ios-install');
+
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true;
+
+  const isIos =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+
+  if (isStandalone) {
+    if (btnInstallPwa) btnInstallPwa.classList.add('hidden');
+    if (settingRowInstall) settingRowInstall.classList.add('hidden');
+  } else if (isIos) {
+    if (btnInstallPwa) btnInstallPwa.classList.remove('hidden');
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!isStandalone) {
+      if (btnInstallPwa) btnInstallPwa.classList.remove('hidden');
+      if (settingRowInstall) settingRowInstall.classList.remove('hidden');
+    }
+  });
+
+  const triggerInstallFlow = async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const choiceResult = await deferredInstallPrompt.userChoice;
+      if (choiceResult.outcome === 'accepted') {
+        if (btnInstallPwa) btnInstallPwa.classList.add('hidden');
+        if (settingRowInstall) settingRowInstall.classList.add('hidden');
+      }
+      deferredInstallPrompt = null;
+    } else if (isIos) {
+      if (iosInstallModal) iosInstallModal.classList.remove('hidden');
+    } else {
+      alert('To install OVERCLOCK, open your browser menu (⋮ or Share) and tap "Install app" or "Add to Home screen".');
+    }
+  };
+
+  if (btnInstallPwa) btnInstallPwa.addEventListener('click', triggerInstallFlow);
+  if (btnSettingsInstall) btnSettingsInstall.addEventListener('click', triggerInstallFlow);
+  if (btnCloseIosInstall && iosInstallModal) {
+    btnCloseIosInstall.addEventListener('click', () => iosInstallModal.classList.add('hidden'));
+  }
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    if (btnInstallPwa) btnInstallPwa.classList.add('hidden');
+    if (settingRowInstall) settingRowInstall.classList.add('hidden');
+  });
+
   // Background battery & thermal protection: Pause audio & simulation when tab is in background
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {

@@ -80,6 +80,7 @@
           <div class="menu-stack">
             <button id="btn-play-boss" class="btn-primary" type="button"><i data-lucide="play"></i> Arcade ladder</button>
             <button id="btn-open-multiplayer" class="btn-secondary btn-online" type="button"><i data-lucide="globe"></i> Online 1v1</button>
+            <button id="btn-install-pwa" class="btn-install-banner hidden" type="button"><i data-lucide="download"></i> Install App (Play Offline)</button>
             <div class="menu-row">
               <button id="btn-shop" class="btn-secondary" type="button"><i data-lucide="shopping-bag"></i> Shop</button>
               <button id="btn-stats" class="btn-secondary" type="button"><i data-lucide="bar-chart-3"></i> Record</button>
@@ -241,6 +242,10 @@
               <span class="setting-label"><i data-lucide="battery-charging"></i> Cool phone / Battery saver</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-battery-saver" /><span class="slider"></span></label>
             </div>
+            <div class="setting-row" id="setting-row-install">
+              <span class="setting-label"><i data-lucide="download"></i> Install App</span>
+              <button id="btn-settings-install" class="btn-secondary btn-xs" type="button"><i data-lucide="arrow-down-to-line"></i> Install</button>
+            </div>
             <div class="setting-row">
               <span class="setting-label"><i data-lucide="maximize"></i> Fullscreen</span>
               <button id="btn-fullscreen-toggle" class="btn-secondary btn-xs" type="button"><i data-lucide="expand"></i> Toggle</button>
@@ -263,6 +268,20 @@
           </div>
         </div>
 
+        <!-- iOS Install Modal Guide -->
+        <div id="ios-install-modal" class="overlay-screen hidden">
+          <div class="modal-card">
+            <h3 class="modal-header"><i data-lucide="smartphone"></i> Install on iPhone / iPad</h3>
+            <p class="modal-note">Apple Safari requires installing via the browser menu:</p>
+            <div class="ios-install-steps">
+              <div class="ios-step"><span class="step-num">1</span> Tap the <b>Share</b> button <i data-lucide="share" class="inline-icon"></i> in the Safari toolbar.</div>
+              <div class="ios-step"><span class="step-num">2</span> Scroll down and tap <b>Add to Home Screen</b> <i data-lucide="plus-square" class="inline-icon"></i>.</div>
+              <div class="ios-step"><span class="step-num">3</span> Tap <b>Add</b> in the top right to play full-screen!</div>
+            </div>
+            <button id="btn-close-ios-install" class="btn-primary btn-block" type="button"><i data-lucide="check"></i> Got it</button>
+          </div>
+        </div>
+
         <!-- Orientation prompt for landscape phones -->
         <div id="orientation-overlay">
           <div class="orientation-box">
@@ -271,9 +290,6 @@
             <p class="orientation-desc">OVERCLOCK is engineered for vertical stadium combat. Turn your device to portrait to continue.</p>
           </div>
         </div>
-
-      </div>
-    </div>
 
       </div>
     </div>

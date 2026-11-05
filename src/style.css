@@ -486,3 +486,65 @@ input:focus-visible + .slider { outline: 2px solid var(--ice); outline-offset: 2
   }
 }
 
+/* PWA Install UI */
+.btn-install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.18), rgba(255, 42, 109, 0.18));
+  border: 1px solid var(--ice);
+  border-radius: 8px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.25);
+  transition: all 0.2s ease;
+  animation: pulseGlow 2s infinite alternate ease-in-out;
+}
+.btn-install-banner:hover {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.32), rgba(255, 42, 109, 0.32));
+  box-shadow: 0 0 22px rgba(0, 240, 255, 0.5);
+}
+.ios-install-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+  text-align: left;
+}
+.ios-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+.step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ice);
+  color: #04121a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+.inline-icon {
+  display: inline-block;
+  vertical-align: middle;
+  width: 16px;
+  height: 16px;
+  color: var(--ice);
+}
+
+
