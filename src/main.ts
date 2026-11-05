@@ -5,7 +5,7 @@ import { refreshIcons, setLabel } from './icons';
 
 // Lucide icon per boss (swap freely) and default icon per shop category.
 const BOSS_ICONS: Record<string, string> = { VIPER: 'worm', TITAN: 'shield', PHANTOM: 'ghost', APEX: 'crown' };
-const SHOP_ICONS: Record<string, string> = { paddle: 'circle-dot', trail: 'wind', goal: 'sparkles' };
+const SHOP_ICONS: Record<string, string> = { paddle: 'circle-dot', trail: 'wind', goal: 'sparkles', arena: 'layout' };
 
 window.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -72,6 +72,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const toggleLaser = document.getElementById('setting-laser') as HTMLInputElement;
   const toggleVibration = document.getElementById('setting-vibration') as HTMLInputElement;
   const toggleReduceMotion = document.getElementById('setting-reduce-motion') as HTMLInputElement;
+  const toggleBatterySaver = document.getElementById('setting-battery-saver') as HTMLInputElement;
   const btnSettingsClose = document.getElementById('btn-settings-close')!;
 
   // Career Stats Elements
@@ -115,6 +116,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const hostCodeDisplay = document.getElementById('host-code-display')!;
   const roomCodeText = document.getElementById('room-code-text')!;
   const btnCopyCode = document.getElementById('btn-copy-code')!;
+  const btnShareInvite = document.getElementById('btn-share-invite');
   const inputRoomCode = document.getElementById('input-room-code') as HTMLInputElement;
   const btnJoinRoom = document.getElementById('btn-join-room')!;
   const joinStatusMsg = document.getElementById('join-status-msg')!;
@@ -126,8 +128,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const tabPaddle = document.getElementById('tab-paddle')!;
   const tabTrail = document.getElementById('tab-trail')!;
   const tabGoal = document.getElementById('tab-goal')!;
+  const tabArena = document.getElementById('tab-arena');
   const btnShopClose = document.getElementById('btn-shop-close')!;
-  let currentShopCategory: 'paddle' | 'trail' | 'goal' = 'paddle';
+  let currentShopCategory: 'paddle' | 'trail' | 'goal' | 'arena' = 'paddle';
 
   // --- Settings Synchronization ---
   const currentSettings = StorageManager.loadSettings();
@@ -137,6 +140,9 @@ window.addEventListener('DOMContentLoaded', () => {
   toggleLaser.checked = currentSettings.showPredictionLine;
   toggleVibration.checked = currentSettings.vibration;
   toggleReduceMotion.checked = currentSettings.reduceMotion;
+  if (toggleBatterySaver) {
+    toggleBatterySaver.checked = !!currentSettings.batterySaver;
+  }
 
   const saveAndApplySettings = () => {
     const updated = {
@@ -146,13 +152,25 @@ window.addEventListener('DOMContentLoaded', () => {
       showPredictionLine: toggleLaser.checked,
       vibration: toggleVibration.checked,
       reduceMotion: toggleReduceMotion.checked,
+      batterySaver: toggleBatterySaver ? toggleBatterySaver.checked : false,
     };
     StorageManager.saveSettings({ ...currentSettings, ...updated });
     game.sound.updateSettings(updated);
     game.renderer.settings = { ...game.renderer.settings, ...updated };
+    game.renderer.setupDPR();
   };
 
-  [toggleSound, toggleMusic, toggleMultiPuck, toggleLaser, toggleVibration, toggleReduceMotion].forEach((input) => {
+  const settingToggles = [
+    toggleSound,
+    toggleMusic,
+    toggleMultiPuck,
+    toggleLaser,
+    toggleVibration,
+    toggleReduceMotion,
+    toggleBatterySaver,
+  ].filter(Boolean) as HTMLInputElement[];
+
+  settingToggles.forEach((input) => {
     input.addEventListener('change', saveAndApplySettings);
   });
 
@@ -224,7 +242,8 @@ window.addEventListener('DOMContentLoaded', () => {
       const isEquipped =
         game.shopManager.state.equippedPaddle === item.id ||
         game.shopManager.state.equippedTrail === item.id ||
-        game.shopManager.state.equippedGoal === item.id;
+        game.shopManager.state.equippedGoal === item.id ||
+        game.shopManager.state.equippedArena === item.id;
 
       const card = document.createElement('div');
       card.className = `shop-card ${isEquipped ? 'equipped' : ''}`;
@@ -272,13 +291,15 @@ window.addEventListener('DOMContentLoaded', () => {
     refreshIcons();
   };
 
-  [tabPaddle, tabTrail, tabGoal].forEach((tab) => {
+  const shopTabs = [tabPaddle, tabTrail, tabGoal, tabArena].filter(Boolean) as HTMLElement[];
+  shopTabs.forEach((tab) => {
     tab.addEventListener('click', () => {
-      [tabPaddle, tabTrail, tabGoal].forEach((t) => t.classList.remove('active'));
+      shopTabs.forEach((t) => t.classList.remove('active'));
       tab.classList.add('active');
       if (tab === tabPaddle) currentShopCategory = 'paddle';
       if (tab === tabTrail) currentShopCategory = 'trail';
       if (tab === tabGoal) currentShopCategory = 'goal';
+      if (tab === tabArena) currentShopCategory = 'arena';
       renderShopUI();
     });
   });
@@ -304,6 +325,56 @@ window.addEventListener('DOMContentLoaded', () => {
     setLabel(btnCopyCode, 'Copied!', 'check');
     setTimeout(() => setLabel(btnCopyCode, 'Copy code', 'copy'), 1800);
   });
+
+  if (btnShareInvite) {
+    btnShareInvite.addEventListener('click', async () => {
+      const code = roomCodeText.textContent?.trim() || '';
+      if (!code) return;
+      const inviteUrl = `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(code)}`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'OVERCLOCK // Kinetic Cyber Air Hockey',
+            text: `Challenge me in OVERCLOCK! Room Code: ${code}`,
+            url: inviteUrl,
+          });
+          return;
+        } catch {
+          // Fallback to clipboard
+        }
+      }
+
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        setLabel(btnShareInvite, 'Link copied!', 'check');
+        setTimeout(() => setLabel(btnShareInvite, 'Share link', 'share-2'), 1800);
+      } catch {
+        prompt('Copy room invite link:', inviteUrl);
+      }
+    });
+  }
+
+  // Auto-detect invite code from URL query parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const joinParam = urlParams.get('join');
+  if (joinParam) {
+    inputRoomCode.value = joinParam.trim().toUpperCase();
+    multiplayerModal.classList.remove('hidden');
+    joinStatusMsg.textContent = `Room ${joinParam.toUpperCase()} detected! Click Join to play.`;
+  }
+
+  // Fullscreen Toggle
+  const btnFullscreenToggle = document.getElementById('btn-fullscreen-toggle');
+  if (btnFullscreenToggle) {
+    btnFullscreenToggle.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+  }
 
   btnJoinRoom.addEventListener('click', () => {
     const code = inputRoomCode.value.trim();
@@ -409,6 +480,7 @@ window.addEventListener('DOMContentLoaded', () => {
       btnNextBoss.classList.add('hidden');
     }
 
+    resetRematchButton();
     resultScreen.classList.remove('hidden');
   };
 
@@ -450,9 +522,41 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  btnRematch.addEventListener('click', () => {
+  const resetRematchButton = () => {
+    btnRematch.removeAttribute('disabled');
+    btnRematch.classList.remove('pulse-glow');
+    setLabel(btnRematch, 'Rematch', 'rotate-ccw');
+  };
+
+  game.net.onRematchRequested = () => {
+    btnRematch.removeAttribute('disabled');
+    btnRematch.classList.add('pulse-glow');
+    setLabel(btnRematch, 'Opponent wants rematch! [Accept]', 'check');
+  };
+
+  game.net.onRematchAccepted = () => {
     resultScreen.classList.add('hidden');
+    resetRematchButton();
     game.restartMatch();
+  };
+
+  btnRematch.addEventListener('click', () => {
+    if (game.mode === 'MULTIPLAYER_HOST' || game.mode === 'MULTIPLAYER_GUEST') {
+      if (btnRematch.textContent?.includes('Accept')) {
+        game.net.sendRematchAccept();
+        resultScreen.classList.add('hidden');
+        resetRematchButton();
+        game.restartMatch();
+      } else {
+        game.net.sendRematchOffer();
+        setLabel(btnRematch, 'Rematch requested...', 'loader-2', { spin: true });
+        btnRematch.setAttribute('disabled', 'true');
+      }
+    } else {
+      resultScreen.classList.add('hidden');
+      resetRematchButton();
+      game.restartMatch();
+    }
   });
 
   btnResultMenu.addEventListener('click', () => {
@@ -492,6 +596,31 @@ window.addEventListener('DOMContentLoaded', () => {
   };
   window.addEventListener('resize', handleResize);
   window.addEventListener('orientationchange', handleResize);
+
+  // Background battery & thermal protection: Pause audio & simulation when tab is in background
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      game.sound.suspend();
+      if (game.mode === 'SOLO_BOSS' && (game.state === 'PLAYING' || game.state === 'COUNTDOWN')) {
+        game.togglePause();
+      }
+    } else {
+      game.sound.resume();
+    }
+  });
+
+  // Register PWA Service Worker for offline play & automatic updates
+  if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        // Automatically check if a new version was pushed
+        registration.update().catch(() => {});
+      })
+      .catch((err) => {
+        console.log('SW registration skipped:', err);
+      });
+  }
 
   game.init();
 });

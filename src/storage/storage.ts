@@ -17,6 +17,7 @@ export class StorageManager {
       showPredictionLine: true,
       curveShots: true,
       multiPuckOverload: false,
+      batterySaver: false,
     };
 
     try {

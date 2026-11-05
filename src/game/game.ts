@@ -339,6 +339,8 @@ export class Game {
     const equipped = this.shopManager.getEquippedColors();
     this.playerPaddle.color = equipped.paddleColor;
     this.playerPaddle.glowColor = equipped.paddleColor;
+    this.renderer.arenaSkin = equipped.arenaSkin;
+    this.renderer.arenaColor = equipped.arenaColor;
   }
 
   private captureRenderState(): RenderState {
@@ -392,6 +394,7 @@ export class Game {
       this.playerPaddle.parryCooldown = 0.65;
       this.particles.emitShockwave(this.playerPaddle.pos, 55, '#ffd166', 300);
       this.sound.playWallTick(400);
+      this.sound.triggerHaptic(28);
 
       if (this.mode === 'MULTIPLAYER_GUEST') {
         this.net.sendInput({
@@ -413,6 +416,7 @@ export class Game {
 
       this.particles.emitEMPWave(this.playerPaddle.pos);
       this.sound.playRailgun();
+      this.sound.triggerHaptic([40, 30, 40, 30, 80]);
       this.renderer.triggerShake(1.5, 0.4);
 
       if (this.mode === 'SOLO_BOSS') {
@@ -569,6 +573,9 @@ export class Game {
     const crossTableAngle = Math.abs(this.puck.vel.x) > 650;
 
     this.tracker.onGoalScored(scorer, robotWasOvercommitted, crossTableAngle);
+    this.renderer.triggerGoalCam();
+    this.hitStopFrames = 6; // Brief dramatic impact freeze
+    this.sound.triggerHaptic([60, 40, 100]);
 
     if (scorer === 'player') {
       this.score.player += pointsAwarded;
@@ -900,6 +907,14 @@ export class Game {
 
   private loop(timestamp: number) {
     if (!this.isRunning) return;
+
+    // Idle throttle: When on TITLE or PAUSED, the canvas is covered by UI overlays.
+    // Pause physics and canvas drawing to stop phone CPU/GPU from heating up.
+    if (this.state === 'TITLE' || this.state === 'PAUSED') {
+      this.lastTime = timestamp;
+      requestAnimationFrame((t) => this.loop(t));
+      return;
+    }
 
     const frameTime = Math.min((timestamp - this.lastTime) / 1000, 0.1);
     this.lastTime = timestamp;

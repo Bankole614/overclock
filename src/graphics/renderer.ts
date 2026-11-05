@@ -14,6 +14,9 @@ export class GameRenderer {
   private shakeDuration = 0;
   private dpr = 1;
   private timeSec = 0;
+  public arenaSkin = 'arena_default';
+  public arenaColor = '#00f0ff';
+  private goalCamScale = 1.0;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -28,18 +31,39 @@ export class GameRenderer {
   }
 
   public setupDPR() {
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 640);
+    const maxDpr = this.settings.batterySaver ? 1.0 : isMobile ? 1.5 : 2.0;
+    this.dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      this.canvas.width = rect.width * this.dpr;
-      this.canvas.height = rect.height * this.dpr;
+      this.canvas.width = Math.round(rect.width * this.dpr);
+      this.canvas.height = Math.round(rect.height * this.dpr);
     }
+  }
+
+  public setGlow(color: string, blur: number) {
+    if (this.settings.batterySaver) {
+      this.ctx.shadowBlur = 0;
+      return;
+    }
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 640);
+    this.ctx.shadowColor = color;
+    this.ctx.shadowBlur = isMobile ? Math.min(blur * 0.35, 6) : blur;
   }
 
   public triggerShake(intensity: number, durationSec = 0.2) {
     if (this.settings.reduceMotion) return;
     this.shakeAmount = Math.max(this.shakeAmount, intensity);
     this.shakeDuration = durationSec;
+  }
+
+  public triggerGoalCam() {
+    if (this.settings.reduceMotion) return;
+    this.goalCamScale = 1.045; // Subtle punch zoom
   }
 
   public update(dt: number) {
@@ -51,6 +75,11 @@ export class GameRenderer {
       } else {
         this.shakeAmount *= Math.max(0, 1 - 8 * dt);
       }
+    }
+    // Easing goal cam back to normal 1.0
+    if (this.goalCamScale > 1.0) {
+      this.goalCamScale += (1.0 - this.goalCamScale) * Math.min(1, 8 * dt);
+      if (this.goalCamScale < 1.002) this.goalCamScale = 1.0;
     }
   }
 
@@ -78,10 +107,11 @@ export class GameRenderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    const scale = Math.min(
+    const baseScale = Math.min(
       this.canvas.width / width,
       this.canvas.height / height
     );
+    const scale = baseScale * this.goalCamScale;
     const offsetX = (this.canvas.width - width * scale) / 2;
     const offsetY = (this.canvas.height - height * scale) / 2;
 
@@ -164,12 +194,24 @@ export class GameRenderer {
     const { width, height, goalWidth, postRadius } = this.table;
     const ctx = this.ctx;
 
-    // Floor gradient
+    // Floor gradient themed by equipped arena skin
     const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
     if (phase === 'REDLINE') {
       bgGrad.addColorStop(0, '#1c0812');
       bgGrad.addColorStop(0.5, '#0b0409');
       bgGrad.addColorStop(1, '#0e0b1c');
+    } else if (this.arenaSkin === 'arena_synthwave') {
+      bgGrad.addColorStop(0, '#1d0726');
+      bgGrad.addColorStop(0.5, '#0c0418');
+      bgGrad.addColorStop(1, '#1b062b');
+    } else if (this.arenaSkin === 'arena_matrix') {
+      bgGrad.addColorStop(0, '#02180b');
+      bgGrad.addColorStop(0.5, '#010e06');
+      bgGrad.addColorStop(1, '#031c0d');
+    } else if (this.arenaSkin === 'arena_redline') {
+      bgGrad.addColorStop(0, '#1a0404');
+      bgGrad.addColorStop(0.5, '#0d0101');
+      bgGrad.addColorStop(1, '#1e0505');
     } else {
       bgGrad.addColorStop(0, '#0c0f18');
       bgGrad.addColorStop(0.5, '#080a10');
@@ -179,7 +221,17 @@ export class GameRenderer {
     ctx.fillRect(0, 0, width, height);
 
     // Glowing grid lines
-    const gridColor = phase === 'REDLINE' ? 'rgba(255, 42, 109, 0.07)' : 'rgba(0, 240, 255, 0.04)';
+    let gridColor = 'rgba(0, 240, 255, 0.04)';
+    if (phase === 'REDLINE') {
+      gridColor = 'rgba(255, 42, 109, 0.08)';
+    } else if (this.arenaSkin === 'arena_synthwave') {
+      gridColor = 'rgba(255, 0, 128, 0.09)';
+    } else if (this.arenaSkin === 'arena_matrix') {
+      gridColor = 'rgba(0, 255, 102, 0.08)';
+    } else if (this.arenaSkin === 'arena_redline') {
+      gridColor = 'rgba(255, 51, 51, 0.08)';
+    }
+
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
     const gridSize = 40;
@@ -196,11 +248,15 @@ export class GameRenderer {
       ctx.stroke();
     }
 
-    // Outer rails glow with clock speed
-    const railColor = clockSpeedGHz >= 4.0 ? '#ffb703' : phase === 'REDLINE' ? '#ff2a6d' : '#00e5ff';
+    // Outer rails glow with clock speed and arena skin
+    let baseRail = '#00e5ff';
+    if (this.arenaSkin === 'arena_synthwave') baseRail = '#ff007f';
+    if (this.arenaSkin === 'arena_matrix') baseRail = '#00ff66';
+    if (this.arenaSkin === 'arena_redline') baseRail = '#ff3333';
+
+    const railColor = clockSpeedGHz >= 4.0 ? '#ffb703' : phase === 'REDLINE' ? '#ff2a6d' : baseRail;
     ctx.strokeStyle = railColor;
-    ctx.shadowColor = railColor;
-    ctx.shadowBlur = 12 + (clockSpeedGHz - 1.0) * 3;
+    this.setGlow(railColor, 12 + (clockSpeedGHz - 1.0) * 3);
     ctx.lineWidth = 4;
 
     ctx.beginPath();
@@ -226,7 +282,8 @@ export class GameRenderer {
     ctx.shadowBlur = 0;
 
     // Center divider
-    ctx.strokeStyle = 'rgba(255, 42, 109, 0.35)';
+    const dividerColor = this.arenaSkin === 'arena_matrix' ? 'rgba(0, 255, 102, 0.35)' : 'rgba(255, 42, 109, 0.35)';
+    ctx.strokeStyle = dividerColor;
     ctx.setLineDash([8, 8]);
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -236,7 +293,14 @@ export class GameRenderer {
     ctx.setLineDash([]);
 
     // Center Circle
-    ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+    const circleColor = this.arenaSkin === 'arena_synthwave'
+      ? 'rgba(255, 0, 150, 0.3)'
+      : this.arenaSkin === 'arena_matrix'
+      ? 'rgba(0, 255, 102, 0.25)'
+      : this.arenaSkin === 'arena_redline'
+      ? 'rgba(255, 51, 51, 0.3)'
+      : 'rgba(0, 240, 255, 0.2)';
+    ctx.strokeStyle = circleColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(width / 2, height / 2, 85, 0, Math.PI * 2);
@@ -278,8 +342,7 @@ export class GameRenderer {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = color;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 8;
+    this.setGlow(color, 8);
     ctx.fill();
     ctx.restore();
   }
@@ -289,8 +352,7 @@ export class GameRenderer {
     ctx.save();
     const color = phase === 'REDLINE' ? '#ff2a6d' : '#ffd166';
     ctx.strokeStyle = color;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 8;
+    this.setGlow(color, 6);
     ctx.lineWidth = 1.8;
     ctx.setLineDash([4, 4]);
 
@@ -362,8 +424,7 @@ export class GameRenderer {
       ctx.arc(x, y, r * 1.55, 0, Math.PI * 2);
       ctx.strokeStyle = '#ffd166';
       ctx.lineWidth = 4;
-      ctx.shadowColor = '#ffd166';
-      ctx.shadowBlur = 25;
+      this.setGlow('#ffd166', 20);
       ctx.stroke();
 
       ctx.fillStyle = 'rgba(255, 209, 102, 0.25)';
@@ -379,8 +440,7 @@ export class GameRenderer {
     const skinColor = paddle.color || '#00f0ff';
     ctx.lineWidth = 3.5;
     ctx.strokeStyle = skinColor;
-    ctx.shadowColor = skinColor;
-    ctx.shadowBlur = 14;
+    this.setGlow(skinColor, 12);
     ctx.stroke();
 
     // Inner bevel
@@ -397,8 +457,7 @@ export class GameRenderer {
     ctx.beginPath();
     ctx.arc(x, y, r * 0.35, 0, Math.PI * 2);
     ctx.fillStyle = skinColor;
-    ctx.shadowColor = skinColor;
-    ctx.shadowBlur = 8;
+    this.setGlow(skinColor, 8);
     ctx.fill();
 
     ctx.restore();
@@ -439,8 +498,7 @@ export class GameRenderer {
 
     ctx.lineWidth = 3.5;
     ctx.strokeStyle = mainColor;
-    ctx.shadowColor = mainColor;
-    ctx.shadowBlur = phase === 'REDLINE' ? 24 : 14;
+    this.setGlow(mainColor, phase === 'REDLINE' ? 18 : 12);
     ctx.stroke();
 
     // Inner mechanical ring
@@ -455,8 +513,7 @@ export class GameRenderer {
     ctx.beginPath();
     ctx.arc(x, y, r * 0.35, 0, Math.PI * 2);
     ctx.fillStyle = mainColor;
-    ctx.shadowColor = mainColor;
-    ctx.shadowBlur = 10;
+    this.setGlow(mainColor, 8);
     ctx.fill();
 
     ctx.restore();
@@ -473,15 +530,13 @@ export class GameRenderer {
       ctx.beginPath();
       ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255, 215, 0, 0.4)';
-      ctx.shadowColor = '#ffd700';
-      ctx.shadowBlur = 30;
+      this.setGlow('#ffd700', 20);
       ctx.fill();
     } else if (puck.isHyperShot || clockSpeedGHz >= 3.0) {
       ctx.beginPath();
       ctx.arc(x, y, r * 1.8, 0, Math.PI * 2);
       ctx.fillStyle = puck.isHyperShot ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 69, 0, 0.25)';
-      ctx.shadowColor = puck.isHyperShot ? '#ffd166' : '#ff4500';
-      ctx.shadowBlur = 20;
+      this.setGlow(puck.isHyperShot ? '#ffd166' : '#ff4500', 16);
       ctx.fill();
     }
 
@@ -489,8 +544,8 @@ export class GameRenderer {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = puck.isGolden ? '#ffd700' : puck.isHyperShot ? '#fff8e7' : '#ffffff';
-    ctx.shadowColor = puck.isGolden ? '#ffd700' : puck.isHyperShot ? '#ffd166' : speedNorm > 0.5 ? '#ff2a6d' : '#00f0ff';
-    ctx.shadowBlur = puck.isGolden ? 25 : 10 + speedNorm * 18;
+    const puckGlowColor = puck.isGolden ? '#ffd700' : puck.isHyperShot ? '#ffd166' : speedNorm > 0.5 ? '#ff2a6d' : '#00f0ff';
+    this.setGlow(puckGlowColor, puck.isGolden ? 20 : 8 + speedNorm * 12);
     ctx.fill();
 
     // Spin indicator dot (shows puck curving rotation)
@@ -539,8 +594,7 @@ export class GameRenderer {
 
     const barColor = chargeNorm >= 1.0 ? '#ffd166' : '#00f0ff';
     ctx.fillStyle = barColor;
-    ctx.shadowColor = barColor;
-    ctx.shadowBlur = chargeNorm >= 1.0 ? 12 : 4;
+    this.setGlow(barColor, chargeNorm >= 1.0 ? 10 : 3);
     ctx.fillRect(barX, barY, fillWidth, barHeight);
 
     ctx.font = 'bold 9px monospace';
@@ -588,8 +642,7 @@ export class GameRenderer {
       ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffffff';
-      ctx.shadowColor = '#ff2a6d';
-      ctx.shadowBlur = 10;
+      this.setGlow('#ff2a6d', 8);
       ctx.fillText(`[AI] "${dialogue}"`, width / 2, 60);
     }
 
@@ -604,8 +657,7 @@ export class GameRenderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = '#00f0ff';
-    ctx.shadowBlur = 24;
+    this.setGlow('#00f0ff', 16);
     ctx.fillText(text, width / 2, height / 2);
     ctx.restore();
   }
@@ -619,8 +671,7 @@ export class GameRenderer {
     ctx.textBaseline = 'middle';
     const isPlayer = text.includes('PLAYER') || text.includes('YOU') || text.includes('GOAL');
     ctx.fillStyle = isPlayer ? '#00f0ff' : '#ff2a6d';
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 30;
+    this.setGlow(ctx.fillStyle, 20);
     ctx.fillText(text, width / 2, height / 2);
     ctx.restore();
   }

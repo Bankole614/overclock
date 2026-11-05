@@ -192,20 +192,16 @@ export class ParticleSystem {
   }
 
   public render(ctx: CanvasRenderingContext2D) {
-    // Render shockwaves
+    // Render shockwaves cleanly without expensive blur passes
     for (let i = 0; i < this.maxShockwaves; i++) {
       const s = this.shockwaves[i];
       if (s.active && s.alpha > 0.01) {
-        ctx.save();
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
         ctx.strokeStyle = s.color;
         ctx.lineWidth = 3.5 * s.alpha;
         ctx.globalAlpha = s.alpha * 0.85;
-        ctx.shadowColor = s.color;
-        ctx.shadowBlur = 10;
         ctx.stroke();
-        ctx.restore();
       }
     }
 

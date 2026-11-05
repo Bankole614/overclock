@@ -31,6 +31,7 @@ export class SoundEngine {
     showPredictionLine: true,
     curveShots: true,
     multiPuckOverload: true,
+    batterySaver: false,
   };
 
   constructor(settings?: Partial<GameSettings>) {
@@ -72,6 +73,12 @@ export class SoundEngine {
   public resume() {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
+    }
+  }
+
+  public suspend() {
+    if (this.ctx && this.ctx.state === 'running') {
+      this.ctx.suspend();
     }
   }
 

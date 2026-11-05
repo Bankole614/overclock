@@ -118,11 +118,12 @@ export interface GameSettings {
   showPredictionLine: boolean;
   curveShots: boolean;
   multiPuckOverload: boolean;
+  batterySaver: boolean;
 }
 
 export interface ShopItem {
   id: string;
-  category: 'paddle' | 'trail' | 'goal';
+  category: 'paddle' | 'trail' | 'goal' | 'arena';
   name: string;
   cost: number;
   color: string;
@@ -135,6 +136,7 @@ export interface CosmeticState {
   equippedPaddle: string;
   equippedTrail: string;
   equippedGoal: string;
+  equippedArena: string;
   unlockedItems: string[];
 }
 

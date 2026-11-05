@@ -1,0 +1,19 @@
+{
+  "name": "OVERCLOCK // Kinetic Cyber Air Hockey",
+  "short_name": "OVERCLOCK",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080c14",
+  "theme_color": "#00f0ff",
+  "description": "High-octane browser-to-browser cyberpunk air hockey with WebRTC multiplayer and boss ladder.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

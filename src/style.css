@@ -413,3 +413,76 @@ input:focus-visible + .slider { outline: 2px solid var(--ice); outline-offset: 2
 /* Boss ladder & Shop: Back button pinned top-left of the screen, outside the scrolling card */
 .boss-back-btn { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; margin: 0; padding: 8px 14px; z-index: 30; background: var(--panel); }
 #boss-modal, #shop-modal { padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
+
+/* Share Buttons & Multiplayer UI */
+.share-btn-row { display: flex; gap: 8px; justify-content: center; width: 100%; margin: 8px 0; }
+.share-btn-row button { flex: 1; }
+
+.pulse-glow {
+  animation: pulseGlow 1.2s infinite alternate ease-in-out;
+}
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 8px rgba(0, 240, 255, 0.4); transform: scale(1); }
+  100% { box-shadow: 0 0 22px rgba(0, 240, 255, 0.85); transform: scale(1.02); }
+}
+
+/* Landscape orientation block on phones */
+#orientation-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(8, 12, 20, 0.98);
+  backdrop-filter: blur(12px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+.orientation-box {
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.rotate-phone-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--ice);
+  color: var(--ice);
+  animation: rotatePhone 2.2s infinite ease-in-out;
+}
+.rotate-phone-icon svg { width: 28px; height: 28px; }
+.orientation-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  color: var(--ice);
+  margin: 0;
+}
+.orientation-desc {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0;
+}
+@keyframes rotatePhone {
+  0%, 20% { transform: rotate(90deg); }
+  50%, 70% { transform: rotate(0deg); }
+  100% { transform: rotate(90deg); }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  #orientation-overlay {
+    display: flex !important;
+  }
+}
+

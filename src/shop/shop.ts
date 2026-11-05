@@ -114,6 +114,44 @@ export const SHOP_CATALOG: ShopItem[] = [
     icon: '⚡',
     description: 'Reality-bending glitch tear with inverted screen flashes.',
   },
+
+  // Arena / Table Themes
+  {
+    id: 'arena_default',
+    category: 'arena',
+    name: 'CYBER OBSIDIAN',
+    cost: 0,
+    color: '#00f0ff',
+    icon: '🏟️',
+    description: 'Standard championship neon stadium floor.',
+  },
+  {
+    id: 'arena_synthwave',
+    category: 'arena',
+    name: 'SYNTHWAVE 84',
+    cost: 500,
+    color: '#ff007f',
+    icon: '🌴',
+    description: 'Outrun sunset grid with hot magenta and violet lasers.',
+  },
+  {
+    id: 'arena_matrix',
+    category: 'arena',
+    name: 'NEO MATRIX',
+    cost: 750,
+    color: '#00ff66',
+    icon: '📟',
+    description: 'Phosphor green terminal grid and cyberspace code lines.',
+  },
+  {
+    id: 'arena_redline',
+    category: 'arena',
+    name: 'REDLINE INFERNO',
+    cost: 1100,
+    color: '#ff3333',
+    icon: '🔥',
+    description: 'Molten crimson floor forged in volcanic overclock chambers.',
+  },
 ];
 
 const SHOP_SAVE_KEY = 'overclock_shop_v2';
@@ -131,7 +169,8 @@ export class ShopManager {
       equippedPaddle: 'skin_default',
       equippedTrail: 'trail_default',
       equippedGoal: 'goal_default',
-      unlockedItems: ['skin_default', 'trail_default', 'goal_default'],
+      equippedArena: 'arena_default',
+      unlockedItems: ['skin_default', 'trail_default', 'goal_default', 'arena_default'],
     };
 
     try {
@@ -180,6 +219,7 @@ export class ShopManager {
     if (item.category === 'paddle') this.state.equippedPaddle = itemId;
     if (item.category === 'trail') this.state.equippedTrail = itemId;
     if (item.category === 'goal') this.state.equippedGoal = itemId;
+    if (item.category === 'arena') this.state.equippedArena = itemId;
 
     this.saveState();
     return true;
@@ -193,11 +233,14 @@ export class ShopManager {
     const paddle = this.getItem(this.state.equippedPaddle);
     const trail = this.getItem(this.state.equippedTrail);
     const goal = this.getItem(this.state.equippedGoal);
+    const arena = this.getItem(this.state.equippedArena || 'arena_default');
 
     return {
       paddleColor: paddle ? paddle.color : '#00f0ff',
       trailColor: trail ? trail.color : '#00f0ff',
       goalColor: goal ? goal.color : '#00f0ff',
+      arenaColor: arena ? arena.color : '#00f0ff',
+      arenaSkin: this.state.equippedArena || 'arena_default',
     };
   }
 }

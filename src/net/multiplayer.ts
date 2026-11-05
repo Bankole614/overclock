@@ -26,6 +26,10 @@ export interface ClientInputPacket {
 
 export type NetRole = 'HOST' | 'GUEST' | 'OFFLINE';
 
+export interface ControlPacket {
+  type: 'REMATCH_OFFER' | 'REMATCH_ACCEPT';
+}
+
 export class MultiplayerManager {
   private peer: Peer | null = null;
   private conn: DataConnection | null = null;
@@ -39,6 +43,8 @@ export class MultiplayerManager {
   public onDisconnected: (() => void) | null = null;
   public onStatePacket: ((packet: NetworkStatePacket) => void) | null = null;
   public onClientInput: ((input: ClientInputPacket) => void) | null = null;
+  public onRematchRequested: (() => void) | null = null;
+  public onRematchAccepted: (() => void) | null = null;
   public onError: ((err: string) => void) | null = null;
 
   constructor() {}
@@ -108,6 +114,16 @@ export class MultiplayerManager {
     });
 
     this.conn.on('data', (data: unknown) => {
+      const msg = data as { type?: string };
+      if (msg && msg.type === 'REMATCH_OFFER') {
+        if (this.onRematchRequested) this.onRematchRequested();
+        return;
+      }
+      if (msg && msg.type === 'REMATCH_ACCEPT') {
+        if (this.onRematchAccepted) this.onRematchAccepted();
+        return;
+      }
+
       if (this.role === 'HOST' && this.onClientInput) {
         this.onClientInput(data as ClientInputPacket);
       } else if (this.role === 'GUEST' && this.onStatePacket) {
@@ -140,6 +156,18 @@ export class MultiplayerManager {
   public sendInput(input: ClientInputPacket) {
     if (this.isConnected && this.conn && this.conn.open) {
       this.conn.send(input);
+    }
+  }
+
+  public sendRematchOffer() {
+    if (this.isConnected && this.conn && this.conn.open) {
+      this.conn.send({ type: 'REMATCH_OFFER' });
+    }
+  }
+
+  public sendRematchAccept() {
+    if (this.isConnected && this.conn && this.conn.open) {
+      this.conn.send({ type: 'REMATCH_ACCEPT' });
     }
   }
 

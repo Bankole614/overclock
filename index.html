@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#080c14" />
     <title>OVERCLOCK // Kinetic Cyber Air Hockey</title>
+    <meta name="description" content="OVERCLOCK — High-speed cyber air hockey with predictive AI bosses, parry mechanics, and 1-click WebRTC peer-to-peer multiplayer." />
+    <meta property="og:title" content="OVERCLOCK // Kinetic Cyber Air Hockey" />
+    <meta property="og:description" content="Beat the machine that sees every shot coming. Play solo against adaptive AI bosses or 1v1 online with 0 latency." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="OVERCLOCK // Kinetic Cyber Air Hockey" />
+    <meta name="twitter:description" content="Beat the machine that sees every shot coming. Play solo against adaptive AI bosses or 1v1 online." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,700;1,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -111,7 +121,10 @@
               <div id="host-code-display" class="room-code-box hidden">
                 <span class="muted-sm">Share this code with your friend</span>
                 <span id="room-code-text" class="room-code-num">OC-7482</span>
-                <button id="btn-copy-code" class="btn-secondary btn-xs" type="button"><i data-lucide="copy"></i> Copy code</button>
+                <div class="share-btn-row">
+                  <button id="btn-copy-code" class="btn-secondary btn-xs" type="button"><i data-lucide="copy"></i> Copy code</button>
+                  <button id="btn-share-invite" class="btn-primary btn-xs" type="button"><i data-lucide="share-2"></i> Share link</button>
+                </div>
                 <div id="host-waiting-status" class="status-warn"><i data-lucide="loader-2" class="spin"></i> Waiting for friend to connect...</div>
               </div>
             </div>
@@ -142,6 +155,7 @@
               <button id="tab-paddle" class="tab-btn active" type="button"><i data-lucide="circle-dot"></i> Striker skins</button>
               <button id="tab-trail" class="tab-btn" type="button"><i data-lucide="wind"></i> Puck trails</button>
               <button id="tab-goal" class="tab-btn" type="button"><i data-lucide="sparkles"></i> Goal FX</button>
+              <button id="tab-arena" class="tab-btn" type="button"><i data-lucide="layout"></i> Arena themes</button>
             </div>
 
             <div id="shop-items-grid" class="shop-grid"></div>
@@ -223,6 +237,14 @@
               <span class="setting-label"><i data-lucide="eye-off"></i> Reduce motion (no shake)</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-reduce-motion" /><span class="slider"></span></label>
             </div>
+            <div class="setting-row">
+              <span class="setting-label"><i data-lucide="battery-charging"></i> Cool phone / Battery saver</span>
+              <label class="toggle-switch"><input type="checkbox" id="setting-battery-saver" /><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label"><i data-lucide="maximize"></i> Fullscreen</span>
+              <button id="btn-fullscreen-toggle" class="btn-secondary btn-xs" type="button"><i data-lucide="expand"></i> Toggle</button>
+            </div>
             <button id="btn-settings-close" class="btn-secondary btn-block" type="button"><i data-lucide="x"></i> Close</button>
           </div>
         </div>
@@ -240,6 +262,18 @@
             <button id="btn-stats-close" class="btn-secondary btn-block" type="button"><i data-lucide="x"></i> Close</button>
           </div>
         </div>
+
+        <!-- Orientation prompt for landscape phones -->
+        <div id="orientation-overlay">
+          <div class="orientation-box">
+            <div class="rotate-phone-icon"><i data-lucide="smartphone"></i></div>
+            <h3 class="orientation-title">PLEASE ROTATE YOUR DEVICE</h3>
+            <p class="orientation-desc">OVERCLOCK is engineered for vertical stadium combat. Turn your device to portrait to continue.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
 
       </div>
     </div>
