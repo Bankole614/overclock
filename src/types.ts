@@ -107,6 +107,8 @@ export interface Score {
   robot: number;
 }
 
+export type DifficultyLevel = 'CASUAL' | 'NORMAL' | 'OVERCLOCKED';
+
 export interface GameSettings {
   soundEnabled: boolean;
   musicEnabled: boolean;
@@ -119,6 +121,7 @@ export interface GameSettings {
   curveShots: boolean;
   multiPuckOverload: boolean;
   batterySaver: boolean;
+  difficulty: DifficultyLevel;
 }
 
 export interface ShopItem {

@@ -1,11 +1,19 @@
 // Web Audio API procedural sound engine with Overclocked Arcade audio synthesis
 import { GameSettings } from '../types';
+import { RobotVoice } from './speech';
 
 export class SoundEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
   private musicGain: GainNode | null = null;
+  public voice = new RobotVoice();
+
+  // Procedural Music Engine
+  private musicTimer: number | null = null;
+  private musicStep = 0;
+  private currentClockSpeed = 1.0;
+  private isMusicPlaying = false;
 
   // Continuous sound nodes
   private humOsc: OscillatorNode | null = null;
@@ -32,6 +40,7 @@ export class SoundEngine {
     curveShots: true,
     multiPuckOverload: true,
     batterySaver: false,
+    difficulty: 'NORMAL',
   };
 
   constructor(settings?: Partial<GameSettings>) {
@@ -205,6 +214,135 @@ export class SoundEngine {
       const clockMult = Math.min(2.0, 0.8 + clockSpeedGHz * 0.25);
       this.tensionGain.gain.setTargetAtTime(0.14 * level, t, 0.2);
       this.tensionFilter.frequency.setTargetAtTime((120 + level * 350) * clockMult, t, 0.25);
+    }
+  }
+
+  // --- Procedural Cyberpunk Synth Music Engine ---
+  public startMusic() {
+    if (!this.settings.musicEnabled || this.isMusicPlaying) return;
+    this.isMusicPlaying = true;
+    this.musicStep = 0;
+    this.scheduleNextMusicBeat();
+  }
+
+  public stopMusic() {
+    this.isMusicPlaying = false;
+    if (this.musicTimer !== null) {
+      clearTimeout(this.musicTimer);
+      this.musicTimer = null;
+    }
+  }
+
+  public updateMusicClock(clockSpeedGHz: number) {
+    this.currentClockSpeed = clockSpeedGHz;
+  }
+
+  private scheduleNextMusicBeat() {
+    if (!this.isMusicPlaying || !this.ctx || !this.musicGain || !this.settings.musicEnabled) return;
+
+    // Tempo scales from 124 BPM to 142 BPM with overclocking
+    const bpm = 124 + Math.min(18, (this.currentClockSpeed - 1.0) * 6);
+    const stepDuration = 60 / bpm / 4; // 16th note
+
+    this.playMusicStep(this.musicStep, this.ctx.currentTime);
+    this.musicStep = (this.musicStep + 1) % 16;
+
+    this.musicTimer = window.setTimeout(() => {
+      this.scheduleNextMusicBeat();
+    }, stepDuration * 1000);
+  }
+
+  private playMusicStep(step: number, t: number) {
+    if (!this.ctx || !this.musicGain || !this.settings.musicEnabled) return;
+
+    // Bassline in D minor (D2: 73.4Hz, F2: 87.3Hz, G2: 98Hz, A2: 110Hz, C3: 130.8Hz)
+    const bassNotes = [73.4, 73.4, 73.4, 87.3, 73.4, 73.4, 98.0, 110.0, 73.4, 73.4, 73.4, 87.3, 98.0, 110.0, 130.8, 110.0];
+    const arpNotes = [293.7, 349.2, 440.0, 523.3, 587.3, 440.0, 349.2, 440.0, 293.7, 349.2, 440.0, 523.3, 659.3, 523.3, 440.0, 349.2];
+
+    const cutoff = 450 + (this.currentClockSpeed - 1.0) * 400;
+
+    // 1. Synth Bass
+    if (step % 2 === 0) {
+      const bOsc = this.ctx.createOscillator();
+      const bGain = this.ctx.createGain();
+      const bFilter = this.ctx.createBiquadFilter();
+
+      bOsc.type = 'sawtooth';
+      bOsc.frequency.setValueAtTime(bassNotes[step], t);
+
+      bFilter.type = 'lowpass';
+      bFilter.frequency.setValueAtTime(cutoff, t);
+      bFilter.Q.setValueAtTime(4, t);
+
+      bGain.gain.setValueAtTime(0.09, t);
+      bGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+      bOsc.connect(bFilter);
+      bFilter.connect(bGain);
+      bGain.connect(this.musicGain);
+
+      bOsc.start(t);
+      bOsc.stop(t + 0.13);
+    }
+
+    // 2. High Cyber Arpeggio (8th note pattern)
+    if (step % 2 === 1) {
+      const aOsc = this.ctx.createOscillator();
+      const aGain = this.ctx.createGain();
+      const aFilter = this.ctx.createBiquadFilter();
+
+      aOsc.type = 'square';
+      aOsc.frequency.setValueAtTime(arpNotes[step], t);
+
+      aFilter.type = 'bandpass';
+      aFilter.frequency.setValueAtTime(cutoff * 1.5, t);
+      aFilter.Q.setValueAtTime(2.5, t);
+
+      aGain.gain.setValueAtTime(0.035, t);
+      aGain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+      aOsc.connect(aFilter);
+      aFilter.connect(aGain);
+      aGain.connect(this.musicGain);
+
+      aOsc.start(t);
+      aOsc.stop(t + 0.1);
+    }
+
+    // 3. Cyber Kick on beats 0, 4, 8, 12
+    if (step % 4 === 0) {
+      const kOsc = this.ctx.createOscillator();
+      const kGain = this.ctx.createGain();
+      kOsc.type = 'sine';
+      kOsc.frequency.setValueAtTime(140, t);
+      kOsc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
+
+      kGain.gain.setValueAtTime(0.12, t);
+      kGain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+      kOsc.connect(kGain);
+      kGain.connect(this.musicGain);
+
+      kOsc.start(t);
+      kOsc.stop(t + 0.1);
+    }
+  }
+
+  /**
+   * Immediately silence in-game ambient sounds when returning to menus
+   */
+  public silenceContinuousSounds() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (this.humGain) this.humGain.gain.setValueAtTime(0.0001, t);
+    if (this.servoGain) this.servoGain.gain.setValueAtTime(0.0001, t);
+    if (this.tensionGain) this.tensionGain.gain.setValueAtTime(0.0001, t);
+    this.stopMusic();
+  }
+
+  public speak(text: string, priority = false) {
+    if (this.settings.soundEnabled) {
+      this.voice.speak(text, priority);
     }
   }
 

@@ -18,6 +18,7 @@ export class StorageManager {
       curveShots: true,
       multiPuckOverload: false,
       batterySaver: false,
+      difficulty: 'NORMAL',
     };
 
     try {

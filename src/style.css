@@ -370,6 +370,15 @@ button:focus-visible, input:focus-visible, .slider:focus-visible { outline: 2px 
 
 /* Settings + record rows */
 .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.setting-row-stacked { display: flex; flex-direction: column; gap: 8px; padding: 11px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.difficulty-btn-group { display: flex; gap: 6px; width: 100%; }
+.diff-btn {
+  flex: 1; padding: 8px 6px; font-family: var(--font-display); font-size: 0.8rem; font-weight: 600;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); border-radius: 6px;
+  cursor: pointer; transition: all 0.15s ease; text-align: center;
+}
+.diff-btn:hover { border-color: var(--ice); color: #fff; }
+.diff-btn.active { background: var(--ice); color: #04121a; border-color: var(--ice); font-weight: 700; box-shadow: 0 0 10px rgba(0, 240, 255, 0.4); }
 .setting-label { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: var(--text); text-align: left; }
 .setting-label svg { color: var(--muted); }
 .rec-val { font-family: var(--font-display); font-weight: 700; color: #fff; }
@@ -383,10 +392,30 @@ input:checked + .slider { background: var(--ice); border-color: var(--ice); }
 input:checked + .slider::before { transform: translateX(20px); background: #04121a; }
 input:focus-visible + .slider { outline: 2px solid var(--ice); outline-offset: 2px; }
 
-@media (max-width: 380px) {
-  .format-btn-group { flex-wrap: wrap; }
-  .format-btn { flex: 1 1 45%; }
+@media (max-width: 600px) {
+  .format-btn-group {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .format-btn {
+    padding: 10px 8px !important;
+    font-size: 0.8rem !important;
+    text-align: center;
+  }
   .tab-btn svg { display: none; }
+}
+
+/* Allow native vertical scrolling anywhere inside modals and on cards */
+.modal-card,
+.modal-card *,
+.boss-grid,
+.boss-card,
+.boss-card *,
+.shop-grid,
+.shop-card,
+.shop-card * {
+  touch-action: pan-y !important;
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -412,7 +441,7 @@ input:focus-visible + .slider { outline: 2px solid var(--ice); outline-offset: 2
 }
 /* Boss ladder & Shop: Back button pinned top-left of the screen, outside the scrolling card */
 .boss-back-btn { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; margin: 0; padding: 8px 14px; z-index: 30; background: var(--panel); }
-#boss-modal, #shop-modal { padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
+#boss-modal, #shop-modal, #multiplayer-modal { padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
 
 /* Share Buttons & Multiplayer UI */
 .share-btn-row { display: flex; gap: 8px; justify-content: center; width: 100%; margin: 8px 0; }

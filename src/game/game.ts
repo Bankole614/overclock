@@ -291,8 +291,14 @@ export class Game {
     this.robotPaddle.color = boss.color;
     this.robotPaddle.glowColor = boss.glowColor;
 
-    this.robot.config.maxSpeed = boss.speed;
-    this.robot.config.reactionMs = boss.reactionMs;
+    const diff = this.sound.settings.difficulty || 'NORMAL';
+    this.director.setDifficulty(diff);
+
+    const speedMult = diff === 'CASUAL' ? 0.78 : diff === 'OVERCLOCKED' ? 1.05 : 0.90;
+    const reactionAdd = diff === 'CASUAL' ? 70 : diff === 'OVERCLOCKED' ? 0 : 20;
+
+    this.robot.config.maxSpeed = Math.round(boss.speed * speedMult);
+    this.robot.config.reactionMs = boss.reactionMs + reactionAdd;
     this.robot.say(boss.introQuote, 2.5);
   }
 
@@ -358,8 +364,16 @@ export class Game {
     requestAnimationFrame((t) => this.loop(t));
   }
 
+  public goToTitle() {
+    this.state = 'TITLE';
+    this.sound.silenceContinuousSounds();
+    if (this.onStateChange) this.onStateChange('TITLE');
+  }
+
   public startMatch() {
     this.sound.resume();
+    this.sound.startMusic();
+    this.sound.speak('Match engaged. Systems overclocked.');
     this.score = { player: 0, robot: 0 };
     if (this.onScoreChange) this.onScoreChange(this.score);
 
@@ -416,6 +430,7 @@ export class Game {
 
       this.particles.emitEMPWave(this.playerPaddle.pos);
       this.sound.playRailgun();
+      this.sound.speak('Overdrive EMP engaged.', true);
       this.sound.triggerHaptic([40, 30, 40, 30, 80]);
       this.renderer.triggerShake(1.5, 0.4);
 
@@ -464,9 +479,12 @@ export class Game {
     if (this.state === 'PLAYING' || this.state === 'COUNTDOWN' || this.state === 'POINT_SCORED') {
       this.prePauseState = this.state;
       this.state = 'PAUSED';
+      this.sound.silenceContinuousSounds();
       if (this.onStateChange) this.onStateChange(this.state);
     } else if (this.state === 'PAUSED') {
       this.state = this.prePauseState;
+      this.sound.resume();
+      this.sound.startMusic();
       this.lastTime = performance.now();
       if (this.onStateChange) this.onStateChange(this.state);
     }
@@ -587,6 +605,10 @@ export class Game {
       this.sound.playGlitchSound();
       this.playerPaddle.overdriveCharge = Math.min(100, this.playerPaddle.overdriveCharge + 25);
       this.shopManager.addChips(25);
+
+      if (this.score.player === this.winningScore - 1) {
+        this.sound.speak('Match point.', true);
+      }
     } else {
       this.score.robot += pointsAwarded;
       this.goalScoredBanner = 'MACHINE SCORES';
@@ -594,9 +616,32 @@ export class Game {
       this.renderer.triggerShake(1.4, 0.4);
       this.particles.emitGoalExplosion({ x: this.table.width / 2, y: this.table.height - 15 }, '#ff2a6d');
 
-      const currentBoss = this.bossManager.getCurrentBoss();
-      this.robot.say(currentBoss.victoryQuote, 2.0);
-      this.sound.playRobotSpeech();
+      if (this.mode === 'SOLO_BOSS') {
+        const currentBoss = this.bossManager.getCurrentBoss();
+        this.robot.say(currentBoss.victoryQuote, 2.0);
+        this.sound.playRobotSpeech();
+
+        if (this.score.robot === this.winningScore - 1) {
+          this.sound.speak('Match point. Terminal error imminent.', true);
+        } else if (this.score.robot - this.score.player >= 2) {
+          const taunts = [
+            'Your defeat is mathematically certain.',
+            'Human reaction time is insufficient.',
+            'Trajectory predicted.',
+            'Overclock systems nominal.',
+            'Machine supremacy demonstrated.'
+          ];
+          this.sound.speak(taunts[Math.floor(Math.random() * taunts.length)]);
+        } else {
+          this.sound.speak(currentBoss.victoryQuote);
+        }
+      } else {
+        if (this.score.robot === this.winningScore - 1) {
+          this.sound.speak('Match point.', true);
+        } else {
+          this.sound.speak('Point conceded.');
+        }
+      }
     }
 
     if (this.onScoreChange) this.onScoreChange(this.score);
@@ -646,7 +691,13 @@ export class Game {
 
   private endMatch(playerWon: boolean) {
     this.state = 'MATCH_END';
-    this.sound.setTensionLevel(0);
+    this.sound.silenceContinuousSounds();
+
+    if (playerWon) {
+      this.sound.speak('Victory confirmed.', true);
+    } else {
+      this.sound.speak('System compromised. Defeat.', true);
+    }
 
     const durationSec = (performance.now() - this.matchStartTime) / 1000;
     this.tracker.stats.durationSeconds = Math.round(durationSec);
@@ -863,6 +914,7 @@ export class Game {
     // 5. Update Audio
     this.sound.updatePuckHum(puckSpeed, this.clockSpeedGHz);
     this.sound.updateRobotServo(this.robot.currentSpeed, this.robot.phase === 'REDLINE');
+    this.sound.updateMusicClock(this.clockSpeedGHz);
 
     // 6. Broadcast state if Multiplayer Host (60 Hz)
     if (this.mode === 'MULTIPLAYER_HOST') {

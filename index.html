@@ -112,6 +112,7 @@
 
         <!-- Multiplayer -->
         <div id="multiplayer-modal" class="overlay-screen hidden">
+          <button id="btn-multiplayer-close" class="btn-secondary boss-back-btn" type="button"><i data-lucide="arrow-left"></i> Back</button>
           <div class="modal-card">
             <h3 class="modal-header"><i data-lucide="globe"></i> Online 1v1</h3>
             <p class="modal-note">Play a friend on their own phone, tablet or laptop. No accounts or downloads.</p>
@@ -138,8 +139,6 @@
               </div>
               <div id="join-status-msg" class="join-status"></div>
             </div>
-
-            <button id="btn-multiplayer-close" class="btn-secondary btn-block" type="button"><i data-lucide="arrow-left"></i> Back</button>
           </div>
         </div>
 
@@ -214,6 +213,14 @@
         <div id="settings-modal" class="overlay-screen hidden">
           <div class="modal-card">
             <h3 class="modal-header"><i data-lucide="settings"></i> Settings</h3>
+            <div class="setting-row-stacked">
+              <span class="setting-label"><i data-lucide="gauge"></i> AI Difficulty</span>
+              <div class="difficulty-btn-group">
+                <button class="diff-btn" data-diff="CASUAL" type="button">Casual</button>
+                <button class="diff-btn active" data-diff="NORMAL" type="button">Normal</button>
+                <button class="diff-btn" data-diff="OVERCLOCKED" type="button">Overclocked</button>
+              </div>
+            </div>
             <div class="setting-row">
               <span class="setting-label"><i data-lucide="volume-2"></i> Sound effects</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-sound" checked /><span class="slider"></span></label>

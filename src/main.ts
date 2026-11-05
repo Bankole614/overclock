@@ -3,8 +3,6 @@ import { StorageManager } from './storage/storage';
 import { SHOP_CATALOG } from './shop/shop';
 import { refreshIcons, setLabel } from './icons';
 
-// Lucide icon per boss (swap freely) and default icon per shop category.
-const BOSS_ICONS: Record<string, string> = { VIPER: 'worm', TITAN: 'shield', PHANTOM: 'ghost', APEX: 'crown' };
 const SHOP_ICONS: Record<string, string> = { paddle: 'circle-dot', trail: 'wind', goal: 'sparkles', arena: 'layout' };
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -134,6 +132,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // --- Settings Synchronization ---
   const currentSettings = StorageManager.loadSettings();
+  let currentDifficulty = currentSettings.difficulty || 'NORMAL';
   toggleSound.checked = currentSettings.soundEnabled;
   toggleMusic.checked = currentSettings.musicEnabled;
   toggleMultiPuck.checked = currentSettings.multiPuckOverload;
@@ -144,6 +143,25 @@ window.addEventListener('DOMContentLoaded', () => {
     toggleBatterySaver.checked = !!currentSettings.batterySaver;
   }
 
+  const diffButtons = document.querySelectorAll<HTMLButtonElement>('.diff-btn');
+  diffButtons.forEach((btn) => {
+    if (btn.dataset.diff === currentDifficulty) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+    btn.addEventListener('click', () => {
+      diffButtons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentDifficulty = (btn.dataset.diff as any) || 'NORMAL';
+      saveAndApplySettings();
+      game.director.setDifficulty(currentDifficulty);
+      if (game.mode === 'SOLO_BOSS') {
+        game.applyBossTuning(game.bossManager.currentBossId);
+      }
+    });
+  });
+
   const saveAndApplySettings = () => {
     const updated = {
       soundEnabled: toggleSound.checked,
@@ -153,6 +171,7 @@ window.addEventListener('DOMContentLoaded', () => {
       vibration: toggleVibration.checked,
       reduceMotion: toggleReduceMotion.checked,
       batterySaver: toggleBatterySaver ? toggleBatterySaver.checked : false,
+      difficulty: currentDifficulty,
     };
     StorageManager.saveSettings({ ...currentSettings, ...updated });
     game.sound.updateSettings(updated);
@@ -197,12 +216,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = `boss-card ${boss.unlocked ? '' : 'locked'} ${boss.defeated ? 'defeated' : ''}`;
 
-      const avatarIcon = BOSS_ICONS[boss.id] || 'bot';
-
       card.innerHTML = `
-        <div class="boss-avatar" style="border-color: ${boss.color}; color: ${boss.color};">
-          <i data-lucide="${avatarIcon}"></i>
-        </div>
         <div class="boss-info">
           <div class="boss-name" style="color: ${boss.color};">
             ${boss.name}${boss.defeated ? ' <span class="boss-tag"><i data-lucide="check"></i> Defeated</span>' : ''}
@@ -517,8 +531,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (started) {
       updateSeriesScoreUI();
     } else {
-      game.state = 'TITLE';
-      if (game.onStateChange) game.onStateChange('TITLE');
+      game.goToTitle();
     }
   });
 
@@ -561,8 +574,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   btnResultMenu.addEventListener('click', () => {
     resultScreen.classList.add('hidden');
-    game.state = 'TITLE';
-    if (game.onStateChange) game.onStateChange('TITLE');
+    game.goToTitle();
   });
 
   btnPauseToggle.addEventListener('click', () => game.togglePause());
@@ -573,8 +585,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   btnPauseMenu.addEventListener('click', () => {
     pauseScreen.classList.add('hidden');
-    game.state = 'TITLE';
-    if (game.onStateChange) game.onStateChange('TITLE');
+    game.goToTitle();
   });
 
   btnSettings.addEventListener('click', () => settingsModal.classList.remove('hidden'));
@@ -680,6 +691,14 @@ window.addEventListener('DOMContentLoaded', () => {
         console.log('SW registration skipped:', err);
       });
   }
+
+  // Robotic voice intro on opening app (on first user touch/click per browser autoplay policy)
+  const triggerVoiceIntro = () => {
+    game.sound.init();
+    game.sound.resume();
+    game.sound.speak('Beat the machine that sees every shot coming.');
+  };
+  window.addEventListener('pointerdown', triggerVoiceIntro, { once: true });
 
   game.init();
 });
