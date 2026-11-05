@@ -84,6 +84,7 @@ export class Game {
   private hitStopFrames = 0;
   private isRunning = false;
   private netSyncTimer = 0;
+  private audioThrottleTimer = 0;
   private lastClientInputTime = 0;
   private lastStateSeq = 0;
   private netPacketSeq = 0;
@@ -294,8 +295,15 @@ export class Game {
     const diff = this.sound.settings.difficulty || 'NORMAL';
     this.director.setDifficulty(diff);
 
-    const speedMult = diff === 'CASUAL' ? 0.78 : diff === 'OVERCLOCKED' ? 1.05 : 0.90;
-    const reactionAdd = diff === 'CASUAL' ? 70 : diff === 'OVERCLOCKED' ? 0 : 20;
+    // Dynamic pacing: Tune robot reaction, speed cap and table drag to difficulty
+    const speedMult = diff === 'CASUAL' ? 0.68 : diff === 'OVERCLOCKED' ? 1.05 : 0.84;
+    const reactionAdd = diff === 'CASUAL' ? 140 : diff === 'OVERCLOCKED' ? 0 : 45;
+    const puckDrag = diff === 'CASUAL' ? 0.16 : diff === 'OVERCLOCKED' ? 0.07 : 0.10;
+    const initialMaxSpeed = diff === 'CASUAL' ? 1350 : diff === 'OVERCLOCKED' ? 1850 : 1600;
+
+    this.table.puckDrag = puckDrag;
+    this.physics.config.puckDrag = puckDrag;
+    this.physics.setMaxSpeedLimit(initialMaxSpeed);
 
     this.robot.config.maxSpeed = Math.round(boss.speed * speedMult);
     this.robot.config.reactionMs = boss.reactionMs + reactionAdd;
@@ -460,6 +468,10 @@ export class Game {
     this.clockSpeedGHz = 1.0;
     this.rallyHits = 0;
     this.puck.isGolden = false;
+
+    const diff = this.sound.settings.difficulty || 'NORMAL';
+    const baseSpeed = diff === 'CASUAL' ? 1350 : diff === 'OVERCLOCKED' ? 1850 : 1600;
+    this.physics.setMaxSpeedLimit(baseSpeed);
 
     if (full) {
       this.countdownTimer = 3.2;
@@ -783,9 +795,9 @@ export class Game {
           const normalVel = relVelX * nx + relVelY * ny;
 
           if (normalVel < 0) {
-            const impulse = -1.8 * normalVel;
-            this.puck.vel.x += nx * impulse + this.playerPaddle.vel.x * 0.85;
-            this.puck.vel.y += ny * impulse + this.playerPaddle.vel.y * 0.85;
+            const impulse = -1.46 * normalVel;
+            this.puck.vel.x += nx * impulse + this.playerPaddle.vel.x * 0.32;
+            this.puck.vel.y += ny * impulse + this.playerPaddle.vel.y * 0.32;
             this.puck.pos.x = this.playerPaddle.pos.x + nx * (minDist + 1);
             this.puck.pos.y = this.playerPaddle.pos.y + ny * (minDist + 1);
 
@@ -835,8 +847,14 @@ export class Game {
         this.tracker.onHit(hitter);
         this.rallyHits++;
 
-        this.clockSpeedGHz = Math.min(5.5, 1.0 + this.rallyHits * 0.32);
-        this.physics.setMaxSpeedLimit(1800 + (this.clockSpeedGHz - 1.0) * 180);
+        const diff = this.sound.settings.difficulty || 'NORMAL';
+        const clockRamp = diff === 'CASUAL' ? 0.08 : diff === 'OVERCLOCKED' ? 0.28 : 0.16;
+        const maxGHz = diff === 'CASUAL' ? 2.5 : diff === 'OVERCLOCKED' ? 5.5 : 3.8;
+        const baseSpeed = diff === 'CASUAL' ? 1350 : diff === 'OVERCLOCKED' ? 1850 : 1600;
+        const speedScale = diff === 'CASUAL' ? 100 : diff === 'OVERCLOCKED' ? 180 : 130;
+
+        this.clockSpeedGHz = Math.min(maxGHz, 1.0 + this.rallyHits * clockRamp);
+        this.physics.setMaxSpeedLimit(baseSpeed + (this.clockSpeedGHz - 1.0) * speedScale);
 
         // In intense rallies, trigger kinetic spark feedback
         if (this.rallyHits >= 5 && Math.random() < 0.2) {
@@ -911,10 +929,14 @@ export class Game {
       pt.alpha *= 0.91;
     }
 
-    // 5. Update Audio
-    this.sound.updatePuckHum(puckSpeed, this.clockSpeedGHz);
-    this.sound.updateRobotServo(this.robot.currentSpeed, this.robot.phase === 'REDLINE');
-    this.sound.updateMusicClock(this.clockSpeedGHz);
+    // 5. Update Audio (Throttled to ~30Hz to prevent audio thread flooding)
+    this.audioThrottleTimer += this.fixedDt;
+    if (this.audioThrottleTimer >= 0.033) {
+      this.audioThrottleTimer = 0;
+      this.sound.updatePuckHum(puckSpeed, this.clockSpeedGHz);
+      this.sound.updateRobotServo(this.robot.currentSpeed, this.robot.phase === 'REDLINE');
+      this.sound.updateMusicClock(this.clockSpeedGHz);
+    }
 
     // 6. Broadcast state if Multiplayer Host (60 Hz)
     if (this.mode === 'MULTIPLAYER_HOST') {

@@ -78,6 +78,14 @@
           </ul>
 
           <div class="menu-stack">
+            <div class="difficulty-quick-bar">
+              <span class="diff-bar-label"><i data-lucide="gauge"></i> AI Difficulty</span>
+              <div class="difficulty-btn-group">
+                <button class="diff-btn" data-diff="CASUAL" type="button">Casual</button>
+                <button class="diff-btn active" data-diff="NORMAL" type="button">Normal</button>
+                <button class="diff-btn" data-diff="OVERCLOCKED" type="button">Overclocked</button>
+              </div>
+            </div>
             <button id="btn-play-boss" class="btn-primary" type="button"><i data-lucide="play"></i> Arcade ladder</button>
             <button id="btn-open-multiplayer" class="btn-secondary btn-online" type="button"><i data-lucide="globe"></i> Online 1v1</button>
             <button id="btn-install-pwa" class="btn-install-banner hidden" type="button"><i data-lucide="download"></i> Install App (Play Offline)</button>
@@ -96,13 +104,24 @@
             <h3 class="modal-header"><i data-lucide="swords"></i> Arcade boss ladder</h3>
             <p class="modal-note">Defeat each machine to unlock the next opponent.</p>
 
-            <div class="format-selection-box">
-              <span class="format-label">Series format</span>
-              <div class="format-btn-group">
-                <button class="format-btn active" data-format="BO1" type="button">Best of 1</button>
-                <button class="format-btn" data-format="BO3" type="button">Best of 3</button>
-                <button class="format-btn" data-format="BO5" type="button">Best of 5</button>
-                <button class="format-btn" data-format="FIRST_TO_3" type="button">Blitz (3 pts)</button>
+            <div class="ladder-config-grid">
+              <div class="format-selection-box">
+                <span class="format-label"><i data-lucide="gauge"></i> AI Difficulty</span>
+                <div class="difficulty-btn-group">
+                  <button class="diff-btn" data-diff="CASUAL" type="button">Casual</button>
+                  <button class="diff-btn active" data-diff="NORMAL" type="button">Normal</button>
+                  <button class="diff-btn" data-diff="OVERCLOCKED" type="button">Overclocked</button>
+                </div>
+              </div>
+
+              <div class="format-selection-box">
+                <span class="format-label"><i data-lucide="trophy"></i> Series format</span>
+                <div class="format-btn-group">
+                  <button class="format-btn active" data-format="BO1" type="button">Best of 1</button>
+                  <button class="format-btn" data-format="BO3" type="button">Best of 3</button>
+                  <button class="format-btn" data-format="BO5" type="button">Best of 5</button>
+                  <button class="format-btn" data-format="FIRST_TO_3" type="button">Blitz (3 pts)</button>
+                </div>
               </div>
             </div>
 
@@ -275,17 +294,49 @@
           </div>
         </div>
 
-        <!-- iOS Install Modal Guide -->
+        <!-- Install on Mobile Modal Guide -->
         <div id="ios-install-modal" class="overlay-screen hidden">
-          <div class="modal-card">
-            <h3 class="modal-header"><i data-lucide="smartphone"></i> Install on iPhone / iPad</h3>
-            <p class="modal-note">Apple Safari requires installing via the browser menu:</p>
-            <div class="ios-install-steps">
-              <div class="ios-step"><span class="step-num">1</span> Tap the <b>Share</b> button <i data-lucide="share" class="inline-icon"></i> in the Safari toolbar.</div>
-              <div class="ios-step"><span class="step-num">2</span> Scroll down and tap <b>Add to Home Screen</b> <i data-lucide="plus-square" class="inline-icon"></i>.</div>
-              <div class="ios-step"><span class="step-num">3</span> Tap <b>Add</b> in the top right to play full-screen!</div>
+          <button id="btn-ios-install-back" class="btn-secondary boss-back-btn" type="button"><i data-lucide="arrow-left"></i> Back</button>
+          <div class="modal-card install-modal-card">
+            <div class="install-modal-header">
+              <div class="install-app-badge"><i data-lucide="smartphone"></i></div>
+              <h3 class="modal-header">Install App</h3>
+              <p class="modal-note">Play in full-screen with offline support and zero browser bar clutter.</p>
             </div>
-            <button id="btn-close-ios-install" class="btn-primary btn-block" type="button"><i data-lucide="check"></i> Got it</button>
+
+            <div class="install-steps-container">
+              <div class="install-step-card">
+                <div class="step-num-badge">1</div>
+                <div class="step-content">
+                  <div class="step-title">Open Browser Menu</div>
+                  <div class="step-desc">
+                    Tap <b>Share</b> <span class="step-icon-chip"><i data-lucide="share"></i></span> in Safari, or <b>More options</b> <span class="step-icon-chip"><i data-lucide="more-vertical"></i></span> in Chrome.
+                  </div>
+                </div>
+              </div>
+
+              <div class="install-step-card">
+                <div class="step-num-badge">2</div>
+                <div class="step-content">
+                  <div class="step-title">Select "Add to Home Screen"</div>
+                  <div class="step-desc">
+                    Scroll down and tap <b>Add to Home Screen</b> <span class="step-icon-chip"><i data-lucide="plus-square"></i></span> or <b>Install App</b>.
+                  </div>
+                </div>
+              </div>
+
+              <div class="install-step-card">
+                <div class="step-num-badge">3</div>
+                <div class="step-content">
+                  <div class="step-title">Launch in Full Screen</div>
+                  <div class="step-desc">
+                    Tap <b>Add</b> to place OVERCLOCK on your home screen for instant 120Hz gameplay.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button id="btn-close-ios-install" class="btn-primary btn-block" type="button"><i data-lucide="check"></i> Got It</button>
           </div>
         </div>
 

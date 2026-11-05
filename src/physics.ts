@@ -73,13 +73,13 @@ export class PhysicsEngine {
         };
       }
 
-      // Normal rebound with momentum transfer & spin
+      // Normal rebound with momentum transfer & spin (tuned authentic air hockey elasticity)
       const vDotN = puck.vel.x * nx + puck.vel.y * ny;
       const pDotN = paddle.vel.x * nx + paddle.vel.y * ny;
 
-      const impulse = -(1 + 1.05) * (vDotN - Math.max(0, pDotN));
-      puck.vel.x += nx * impulse + paddle.vel.x * 0.45;
-      puck.vel.y += ny * impulse + paddle.vel.y * 0.45;
+      const impulse = -(1 + 0.46) * (vDotN - Math.max(0, pDotN));
+      puck.vel.x += nx * impulse + paddle.vel.x * 0.32;
+      puck.vel.y += ny * impulse + paddle.vel.y * 0.32;
 
       // Tangential velocity imparts Magnus spin
       const tangentVel = -ny * (puck.vel.x - paddle.vel.x) + nx * (puck.vel.y - paddle.vel.y);
@@ -145,10 +145,10 @@ export class PhysicsEngine {
 
         const vDotN = puck.vel.x * nx + puck.vel.y * ny;
         const pDotN = paddle.vel.x * nx + paddle.vel.y * ny;
-        const impulse = -(1 + 1.05) * (vDotN - Math.max(0, pDotN));
+        const impulse = -(1 + 0.46) * (vDotN - Math.max(0, pDotN));
 
-        puck.vel.x += nx * impulse + paddle.vel.x * 0.48;
-        puck.vel.y += ny * impulse + paddle.vel.y * 0.48;
+        puck.vel.x += nx * impulse + paddle.vel.x * 0.32;
+        puck.vel.y += ny * impulse + paddle.vel.y * 0.32;
 
         const tangentVel = -ny * (puck.vel.x - paddle.vel.x) + nx * (puck.vel.y - paddle.vel.y);
         puck.spin = Math.max(-30, Math.min(30, tangentVel * 0.04));

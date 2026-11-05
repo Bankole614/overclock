@@ -38,6 +38,9 @@ export class RobotVoice {
     try {
       if (priority) {
         this.synth.cancel();
+      } else if (this.synth.speaking) {
+        // Prevent speech queue buildup on mobile devices during fast gameplay
+        return;
       }
       const u = new SpeechSynthesisUtterance(text);
       if (this.voice) u.voice = this.voice;

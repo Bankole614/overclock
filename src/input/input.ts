@@ -68,7 +68,7 @@ export class InputManager {
   }
 
   private isInteractiveTarget(target: EventTarget | null): boolean {
-    if (!target || !(target instanceof HTMLElement)) return false;
+    if (!target || !(target instanceof Element)) return false;
     return !!target.closest(
       'button, input, select, textarea, .action-btn, .hud-btn, .modal-card, .overlay-screen:not(.hidden)'
     );

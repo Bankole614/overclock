@@ -213,10 +213,13 @@ button:focus-visible, input:focus-visible, .slider:focus-visible { outline: 2px 
 .series-chip.hidden { display: none; }
 .hud-btn {
   pointer-events: auto; display: grid; place-items: center;
-  width: 34px; height: 34px; background: var(--panel); color: var(--text);
-  border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+  min-width: 44px; min-height: 44px; width: 44px; height: 44px; background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+  touch-action: manipulation;
 }
 .hud-btn:hover { border-color: var(--ice); color: var(--ice); }
+.hud-btn:active { background: var(--panel-2); transform: scale(0.95); }
+.hud-btn svg, .hud-btn i { pointer-events: none; }
 
 /* Action bar */
 #action-bar {
@@ -441,7 +444,7 @@ input:focus-visible + .slider { outline: 2px solid var(--ice); outline-offset: 2
 }
 /* Boss ladder & Shop: Back button pinned top-left of the screen, outside the scrolling card */
 .boss-back-btn { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); left: 12px; margin: 0; padding: 8px 14px; z-index: 30; background: var(--panel); }
-#boss-modal, #shop-modal, #multiplayer-modal { padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
+#boss-modal, #shop-modal, #multiplayer-modal, #ios-install-modal { padding-top: calc(64px + env(safe-area-inset-top, 0px)); }
 
 /* Share Buttons & Multiplayer UI */
 .share-btn-row { display: flex; gap: 8px; justify-content: center; width: 100%; margin: 8px 0; }
@@ -540,40 +543,147 @@ input:focus-visible + .slider { outline: 2px solid var(--ice); outline-offset: 2
   background: linear-gradient(135deg, rgba(0, 240, 255, 0.32), rgba(255, 42, 109, 0.32));
   box-shadow: 0 0 22px rgba(0, 240, 255, 0.5);
 }
-.ios-install-steps {
+/* Title Screen & Ladder Difficulty Quick Bar */
+.difficulty-quick-bar {
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin: 16px 0;
+  gap: 6px;
+  width: 100%;
   text-align: left;
 }
-.ios-step {
+.diff-bar-label {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
-  color: var(--text);
-  line-height: 1.4;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ice);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
-.step-num {
+.diff-bar-label svg {
+  width: 13px;
+  height: 13px;
+}
+
+.ladder-config-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+/* Install Modal Modern Card */
+.install-modal-card {
+  max-width: 440px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.install-modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+.install-modal-header .modal-header {
+  margin-bottom: 2px;
+}
+.install-modal-header .modal-note {
+  margin-bottom: 4px;
+}
+.install-app-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid var(--ice);
+  color: var(--ice);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.25);
+  margin-bottom: 6px;
+}
+.install-app-badge svg {
   width: 24px;
   height: 24px;
+}
+
+.install-steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.install-step-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: left;
+}
+.step-num-badge {
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--ice);
   color: #04121a;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.step-content {
+  flex: 1;
   display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.step-title {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+.step-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.step-desc b {
+  color: var(--text);
+  font-weight: 600;
+}
+.step-icon-chip {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 0.8rem;
-  flex-shrink: 0;
-}
-.inline-icon {
-  display: inline-block;
+  width: 20px;
+  height: 20px;
   vertical-align: middle;
-  width: 16px;
-  height: 16px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
   color: var(--ice);
+  margin: 0 2px;
+}
+.step-icon-chip svg {
+  width: 13px;
+  height: 13px;
 }
 
 

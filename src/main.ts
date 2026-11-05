@@ -144,16 +144,21 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   const diffButtons = document.querySelectorAll<HTMLButtonElement>('.diff-btn');
+  const syncDifficultyButtons = (diff: string) => {
+    diffButtons.forEach((btn) => {
+      if (btn.dataset.diff === diff) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  };
+  syncDifficultyButtons(currentDifficulty);
+
   diffButtons.forEach((btn) => {
-    if (btn.dataset.diff === currentDifficulty) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
     btn.addEventListener('click', () => {
-      diffButtons.forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
       currentDifficulty = (btn.dataset.diff as any) || 'NORMAL';
+      syncDifficultyButtons(currentDifficulty);
       saveAndApplySettings();
       game.director.setDifficulty(currentDifficulty);
       if (game.mode === 'SOLO_BOSS') {
@@ -577,7 +582,18 @@ window.addEventListener('DOMContentLoaded', () => {
     game.goToTitle();
   });
 
-  btnPauseToggle.addEventListener('click', () => game.togglePause());
+  let lastPauseToggleTime = 0;
+  const handlePauseToggle = (e: Event) => {
+    const now = performance.now();
+    if (now - lastPauseToggleTime < 250) return;
+    lastPauseToggleTime = now;
+    e.preventDefault();
+    e.stopPropagation();
+    game.togglePause();
+  };
+
+  btnPauseToggle.addEventListener('pointerdown', handlePauseToggle);
+  btnPauseToggle.addEventListener('click', handlePauseToggle);
   btnResume.addEventListener('click', () => game.togglePause());
   btnRestart.addEventListener('click', () => {
     pauseScreen.classList.add('hidden');
@@ -615,43 +631,91 @@ window.addEventListener('DOMContentLoaded', () => {
   const settingRowInstall = document.getElementById('setting-row-install');
   const iosInstallModal = document.getElementById('ios-install-modal');
   const btnCloseIosInstall = document.getElementById('btn-close-ios-install');
+  const btnIosInstallBack = document.getElementById('btn-ios-install-back');
 
-  const isStandalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true;
+  // Robust multi-platform detection for installed PWA / Home Screen status
+  const isAppRunningStandalone = (): boolean => {
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.matchMedia('(display-mode: minimal-ui)').matches ||
+      window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+  };
+
+  const hideAllInstallPrompts = () => {
+    if (btnInstallPwa) btnInstallPwa.classList.add('hidden');
+    if (settingRowInstall) settingRowInstall.classList.add('hidden');
+  };
+
+  const showInstallPrompts = () => {
+    if (!isAppRunningStandalone() && localStorage.getItem('overclock_pwa_installed') !== 'true') {
+      if (btnInstallPwa) btnInstallPwa.classList.remove('hidden');
+      if (settingRowInstall) settingRowInstall.classList.remove('hidden');
+    }
+  };
 
   const isIos =
     /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 
-  if (isStandalone) {
-    if (btnInstallPwa) btnInstallPwa.classList.add('hidden');
-    if (settingRowInstall) settingRowInstall.classList.add('hidden');
+  // Immediately hide if running as standalone app or previously recorded as installed
+  if (isAppRunningStandalone()) {
+    localStorage.setItem('overclock_pwa_installed', 'true');
+    hideAllInstallPrompts();
+  } else if (localStorage.getItem('overclock_pwa_installed') === 'true') {
+    hideAllInstallPrompts();
   } else if (isIos) {
-    if (btnInstallPwa) btnInstallPwa.classList.remove('hidden');
+    showInstallPrompts();
   }
+
+  // Modern browser API check: check if the app is already installed on device
+  if ('getInstalledRelatedApps' in navigator) {
+    (navigator as any).getInstalledRelatedApps().then((relatedApps: any[]) => {
+      if (relatedApps && relatedApps.length > 0) {
+        localStorage.setItem('overclock_pwa_installed', 'true');
+        hideAllInstallPrompts();
+      }
+    }).catch(() => {});
+  }
+
+  // Listen for display-mode changes (e.g. user opens app or moves to standalone window)
+  ['(display-mode: standalone)', '(display-mode: fullscreen)', '(display-mode: minimal-ui)'].forEach((query) => {
+    try {
+      window.matchMedia(query).addEventListener('change', (e) => {
+        if (e.matches) {
+          localStorage.setItem('overclock_pwa_installed', 'true');
+          hideAllInstallPrompts();
+        }
+      });
+    } catch {}
+  });
 
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
-    if (!isStandalone) {
-      if (btnInstallPwa) btnInstallPwa.classList.remove('hidden');
-      if (settingRowInstall) settingRowInstall.classList.remove('hidden');
+    if (!isAppRunningStandalone() && localStorage.getItem('overclock_pwa_installed') !== 'true') {
+      showInstallPrompts();
     }
   });
 
   const triggerInstallFlow = async () => {
     if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      const choiceResult = await deferredInstallPrompt.userChoice;
-      if (choiceResult.outcome === 'accepted') {
-        if (btnInstallPwa) btnInstallPwa.classList.add('hidden');
-        if (settingRowInstall) settingRowInstall.classList.add('hidden');
+      try {
+        deferredInstallPrompt.prompt();
+        const choiceResult = await deferredInstallPrompt.userChoice;
+        if (choiceResult.outcome === 'accepted') {
+          localStorage.setItem('overclock_pwa_installed', 'true');
+          hideAllInstallPrompts();
+        }
+        deferredInstallPrompt = null;
+      } catch {
+        if (iosInstallModal) iosInstallModal.classList.remove('hidden');
       }
-      deferredInstallPrompt = null;
-    } else if (isIos) {
-      if (iosInstallModal) iosInstallModal.classList.remove('hidden');
     } else {
-      alert('To install OVERCLOCK, open your browser menu (⋮ or Share) and tap "Install app" or "Add to Home screen".');
+      // Show the spacious, modern step-by-step visual install sheet
+      if (iosInstallModal) iosInstallModal.classList.remove('hidden');
     }
   };
 
@@ -660,11 +724,14 @@ window.addEventListener('DOMContentLoaded', () => {
   if (btnCloseIosInstall && iosInstallModal) {
     btnCloseIosInstall.addEventListener('click', () => iosInstallModal.classList.add('hidden'));
   }
+  if (btnIosInstallBack && iosInstallModal) {
+    btnIosInstallBack.addEventListener('click', () => iosInstallModal.classList.add('hidden'));
+  }
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
-    if (btnInstallPwa) btnInstallPwa.classList.add('hidden');
-    if (settingRowInstall) settingRowInstall.classList.add('hidden');
+    localStorage.setItem('overclock_pwa_installed', 'true');
+    hideAllInstallPrompts();
   });
 
   // Background battery & thermal protection: Pause audio & simulation when tab is in background

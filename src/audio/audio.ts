@@ -28,6 +28,18 @@ export class SoundEngine {
   private tensionFilter: BiquadFilterNode | null = null;
   private tensionGain: GainNode | null = null;
 
+  // Persistent Zero-Allocation Music Synthesizer Voices
+  private musicBassOsc: OscillatorNode | null = null;
+  private musicBassFilter: BiquadFilterNode | null = null;
+  private musicBassGain: GainNode | null = null;
+
+  private musicArpOsc: OscillatorNode | null = null;
+  private musicArpFilter: BiquadFilterNode | null = null;
+  private musicArpGain: GainNode | null = null;
+
+  private musicKickOsc: OscillatorNode | null = null;
+  private musicKickGain: GainNode | null = null;
+
   public settings: GameSettings = {
     soundEnabled: true,
     musicEnabled: true,
@@ -74,6 +86,7 @@ export class SoundEngine {
       this.initContinuousHum();
       this.initServoWhine();
       this.initTensionDrone();
+      this.initMusicSynth();
     } catch (e) {
       console.warn('Web Audio not supported or blocked:', e);
     }
@@ -217,9 +230,68 @@ export class SoundEngine {
     }
   }
 
+  // --- Persistent Synth Voices (Zero-Allocation Music Engine) ---
+  private initMusicSynth() {
+    if (!this.ctx || !this.musicGain) return;
+    try {
+      const t = this.ctx.currentTime;
+
+      // 1. Persistent Bass Synth Voice
+      this.musicBassOsc = this.ctx.createOscillator();
+      this.musicBassOsc.type = 'sawtooth';
+      this.musicBassOsc.frequency.setValueAtTime(73.4, t);
+
+      this.musicBassFilter = this.ctx.createBiquadFilter();
+      this.musicBassFilter.type = 'lowpass';
+      this.musicBassFilter.frequency.setValueAtTime(450, t);
+      this.musicBassFilter.Q.setValueAtTime(4, t);
+
+      this.musicBassGain = this.ctx.createGain();
+      this.musicBassGain.gain.setValueAtTime(0.0001, t);
+
+      this.musicBassOsc.connect(this.musicBassFilter);
+      this.musicBassFilter.connect(this.musicBassGain);
+      this.musicBassGain.connect(this.musicGain);
+      this.musicBassOsc.start();
+
+      // 2. Persistent Cyber Arp Voice
+      this.musicArpOsc = this.ctx.createOscillator();
+      this.musicArpOsc.type = 'square';
+      this.musicArpOsc.frequency.setValueAtTime(293.7, t);
+
+      this.musicArpFilter = this.ctx.createBiquadFilter();
+      this.musicArpFilter.type = 'bandpass';
+      this.musicArpFilter.frequency.setValueAtTime(675, t);
+      this.musicArpFilter.Q.setValueAtTime(2.5, t);
+
+      this.musicArpGain = this.ctx.createGain();
+      this.musicArpGain.gain.setValueAtTime(0.0001, t);
+
+      this.musicArpOsc.connect(this.musicArpFilter);
+      this.musicArpFilter.connect(this.musicArpGain);
+      this.musicArpGain.connect(this.musicGain);
+      this.musicArpOsc.start();
+
+      // 3. Persistent Kick Voice
+      this.musicKickOsc = this.ctx.createOscillator();
+      this.musicKickOsc.type = 'sine';
+      this.musicKickOsc.frequency.setValueAtTime(40, t);
+
+      this.musicKickGain = this.ctx.createGain();
+      this.musicKickGain.gain.setValueAtTime(0.0001, t);
+
+      this.musicKickOsc.connect(this.musicKickGain);
+      this.musicKickGain.connect(this.musicGain);
+      this.musicKickOsc.start();
+    } catch {
+      // Ignored if blocked by autoplay
+    }
+  }
+
   // --- Procedural Cyberpunk Synth Music Engine ---
   public startMusic() {
     if (!this.settings.musicEnabled || this.isMusicPlaying) return;
+    this.resume();
     this.isMusicPlaying = true;
     this.musicStep = 0;
     this.scheduleNextMusicBeat();
@@ -230,6 +302,12 @@ export class SoundEngine {
     if (this.musicTimer !== null) {
       clearTimeout(this.musicTimer);
       this.musicTimer = null;
+    }
+    if (this.ctx) {
+      const t = this.ctx.currentTime;
+      if (this.musicBassGain) this.musicBassGain.gain.setTargetAtTime(0.0001, t, 0.04);
+      if (this.musicArpGain) this.musicArpGain.gain.setTargetAtTime(0.0001, t, 0.04);
+      if (this.musicKickGain) this.musicKickGain.gain.setTargetAtTime(0.0001, t, 0.04);
     }
   }
 
@@ -261,70 +339,53 @@ export class SoundEngine {
 
     const cutoff = 450 + (this.currentClockSpeed - 1.0) * 400;
 
-    // 1. Synth Bass
-    if (step % 2 === 0) {
-      const bOsc = this.ctx.createOscillator();
-      const bGain = this.ctx.createGain();
-      const bFilter = this.ctx.createBiquadFilter();
+    // 1. Synth Bass (beats 0, 2, 4, 6...)
+    if (step % 2 === 0 && this.musicBassOsc && this.musicBassGain && this.musicBassFilter) {
+      try {
+        this.musicBassOsc.frequency.cancelScheduledValues(t);
+        this.musicBassOsc.frequency.setValueAtTime(bassNotes[step], t);
 
-      bOsc.type = 'sawtooth';
-      bOsc.frequency.setValueAtTime(bassNotes[step], t);
+        this.musicBassFilter.frequency.cancelScheduledValues(t);
+        this.musicBassFilter.frequency.setValueAtTime(cutoff, t);
 
-      bFilter.type = 'lowpass';
-      bFilter.frequency.setValueAtTime(cutoff, t);
-      bFilter.Q.setValueAtTime(4, t);
-
-      bGain.gain.setValueAtTime(0.09, t);
-      bGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-
-      bOsc.connect(bFilter);
-      bFilter.connect(bGain);
-      bGain.connect(this.musicGain);
-
-      bOsc.start(t);
-      bOsc.stop(t + 0.13);
+        this.musicBassGain.gain.cancelScheduledValues(t);
+        this.musicBassGain.gain.setValueAtTime(0.09, t);
+        this.musicBassGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+      } catch {
+        // Ignored
+      }
     }
 
-    // 2. High Cyber Arpeggio (8th note pattern)
-    if (step % 2 === 1) {
-      const aOsc = this.ctx.createOscillator();
-      const aGain = this.ctx.createGain();
-      const aFilter = this.ctx.createBiquadFilter();
+    // 2. High Cyber Arpeggio (8th note pattern on off-beats)
+    if (step % 2 === 1 && this.musicArpOsc && this.musicArpGain && this.musicArpFilter) {
+      try {
+        this.musicArpOsc.frequency.cancelScheduledValues(t);
+        this.musicArpOsc.frequency.setValueAtTime(arpNotes[step], t);
 
-      aOsc.type = 'square';
-      aOsc.frequency.setValueAtTime(arpNotes[step], t);
+        this.musicArpFilter.frequency.cancelScheduledValues(t);
+        this.musicArpFilter.frequency.setValueAtTime(cutoff * 1.5, t);
 
-      aFilter.type = 'bandpass';
-      aFilter.frequency.setValueAtTime(cutoff * 1.5, t);
-      aFilter.Q.setValueAtTime(2.5, t);
-
-      aGain.gain.setValueAtTime(0.035, t);
-      aGain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-
-      aOsc.connect(aFilter);
-      aFilter.connect(aGain);
-      aGain.connect(this.musicGain);
-
-      aOsc.start(t);
-      aOsc.stop(t + 0.1);
+        this.musicArpGain.gain.cancelScheduledValues(t);
+        this.musicArpGain.gain.setValueAtTime(0.035, t);
+        this.musicArpGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+      } catch {
+        // Ignored
+      }
     }
 
     // 3. Cyber Kick on beats 0, 4, 8, 12
-    if (step % 4 === 0) {
-      const kOsc = this.ctx.createOscillator();
-      const kGain = this.ctx.createGain();
-      kOsc.type = 'sine';
-      kOsc.frequency.setValueAtTime(140, t);
-      kOsc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
+    if (step % 4 === 0 && this.musicKickOsc && this.musicKickGain) {
+      try {
+        this.musicKickOsc.frequency.cancelScheduledValues(t);
+        this.musicKickOsc.frequency.setValueAtTime(140, t);
+        this.musicKickOsc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
 
-      kGain.gain.setValueAtTime(0.12, t);
-      kGain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-
-      kOsc.connect(kGain);
-      kGain.connect(this.musicGain);
-
-      kOsc.start(t);
-      kOsc.stop(t + 0.1);
+        this.musicKickGain.gain.cancelScheduledValues(t);
+        this.musicKickGain.gain.setValueAtTime(0.12, t);
+        this.musicKickGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+      } catch {
+        // Ignored
+      }
     }
   }
 
@@ -337,6 +398,9 @@ export class SoundEngine {
     if (this.humGain) this.humGain.gain.setValueAtTime(0.0001, t);
     if (this.servoGain) this.servoGain.gain.setValueAtTime(0.0001, t);
     if (this.tensionGain) this.tensionGain.gain.setValueAtTime(0.0001, t);
+    if (this.musicBassGain) this.musicBassGain.gain.setValueAtTime(0.0001, t);
+    if (this.musicArpGain) this.musicArpGain.gain.setValueAtTime(0.0001, t);
+    if (this.musicKickGain) this.musicKickGain.gain.setValueAtTime(0.0001, t);
     this.stopMusic();
   }
 
