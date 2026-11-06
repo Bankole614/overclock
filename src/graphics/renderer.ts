@@ -37,9 +37,15 @@ export class GameRenderer {
     const maxDpr = this.settings.batterySaver ? 1.0 : isMobile ? 1.5 : 2.0;
     this.dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
     const rect = this.canvas.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      this.canvas.width = Math.round(rect.width * this.dpr);
-      this.canvas.height = Math.round(rect.height * this.dpr);
+    const w = rect.width > 0 ? rect.width : this.canvas.clientWidth;
+    const h = rect.height > 0 ? rect.height : this.canvas.clientHeight;
+    if (w > 0 && h > 0) {
+      const targetW = Math.round(w * this.dpr);
+      const targetH = Math.round(h * this.dpr);
+      if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+        this.canvas.width = targetW;
+        this.canvas.height = targetH;
+      }
     }
   }
 
@@ -95,6 +101,17 @@ export class GameRenderer {
   ) {
     const { width, height } = this.table;
     const ctx = this.ctx;
+
+    // Auto-detect resolution desync on mobile viewport changes / orientation shifts
+    const clientW = this.canvas.clientWidth;
+    const clientH = this.canvas.clientHeight;
+    if (clientW > 0 && clientH > 0) {
+      const targetW = Math.round(clientW * this.dpr);
+      const targetH = Math.round(clientH * this.dpr);
+      if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+        this.setupDPR();
+      }
+    }
 
     // Reset transform & clear
     ctx.setTransform(1, 0, 0, 1, 0, 0);

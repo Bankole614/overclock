@@ -624,6 +624,11 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', handleResize);
   window.addEventListener('orientationchange', handleResize);
 
+  if (typeof ResizeObserver !== 'undefined' && canvas) {
+    const ro = new ResizeObserver(() => handleResize());
+    ro.observe(canvas);
+  }
+
   // --- PWA Installation & Prompt Management ---
   let deferredInstallPrompt: any = null;
   const btnInstallPwa = document.getElementById('btn-install-pwa');

@@ -153,19 +153,6 @@ button:focus-visible, input:focus-visible, .slider:focus-visible { outline: 2px 
 .menu-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
 .menu-row { display: flex; gap: 8px; }
 .menu-row .btn-secondary { flex: 1; margin: 0; padding: 10px 6px; }
-.menu-portfolio-row { margin-top: 2px; }
-.portfolio-link-btn {
-  text-decoration: none;
-  font-size: 0.76rem !important;
-  color: var(--ice) !important;
-  border-color: rgba(94, 231, 255, 0.25) !important;
-  padding: 8px 6px !important;
-  letter-spacing: 0.5px !important;
-}
-.portfolio-link-btn:hover {
-  border-color: var(--ice) !important;
-  background: rgba(94, 231, 255, 0.08) !important;
-}
 
 /* Buttons: tactile keys with a hard bottom edge */
 .btn-primary {

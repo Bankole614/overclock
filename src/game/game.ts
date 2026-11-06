@@ -530,6 +530,25 @@ export class Game {
     this.lastConceded = serveTo;
     this.updateBossPhase();
 
+    // Sync render states to home positions
+    this.currState.puck.pos.x = this.puck.pos.x;
+    this.currState.puck.pos.y = this.puck.pos.y;
+    this.currState.puck.vel.x = 0;
+    this.currState.puck.vel.y = 0;
+    this.currState.playerPaddle.pos.x = this.playerPaddle.pos.x;
+    this.currState.playerPaddle.pos.y = this.playerPaddle.pos.y;
+    this.currState.robotPaddle.pos.x = this.robotPaddle.pos.x;
+    this.currState.robotPaddle.pos.y = this.robotPaddle.pos.y;
+
+    this.prevState.puck.pos.x = this.puck.pos.x;
+    this.prevState.puck.pos.y = this.puck.pos.y;
+    this.prevState.puck.vel.x = 0;
+    this.prevState.puck.vel.y = 0;
+    this.prevState.playerPaddle.pos.x = this.playerPaddle.pos.x;
+    this.prevState.playerPaddle.pos.y = this.playerPaddle.pos.y;
+    this.prevState.robotPaddle.pos.x = this.robotPaddle.pos.x;
+    this.prevState.robotPaddle.pos.y = this.robotPaddle.pos.y;
+
     // Check Multi-Puck Overload at 6-6 Match Point
     if (this.score.player === 6 && this.score.robot === 6 && this.sound.settings.multiPuckOverload) {
       this.spawnSecondPuck();
