@@ -1055,6 +1055,7 @@ export class Game {
     }
 
     if (this.state === 'POINT_SCORED') {
+      this.input.update(frameTime, this.playerPaddle);
       this.pointPauseTimer -= frameTime;
       if (this.pointPauseTimer <= 0) {
         const nextServeTo =

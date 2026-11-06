@@ -285,6 +285,24 @@ export class InputManager {
   }
 
   public resetToHome(playerPaddle: Paddle) {
+    if (this.isTouching && this.activeTouchId !== null) {
+      // Player is still holding or moving the mallet on screen: keep tracking without teleporting!
+      const { height, width } = this.table;
+      const paddleRadius = playerPaddle.radius || this.playerPaddleRadius;
+      const minY = height / 2 + paddleRadius + 5;
+      const maxY = height - paddleRadius;
+      const minX = paddleRadius;
+      const maxX = width - paddleRadius;
+
+      playerPaddle.pos.x = Math.min(maxX, Math.max(minX, playerPaddle.pos.x));
+      playerPaddle.pos.y = Math.min(maxY, Math.max(minY, playerPaddle.pos.y));
+      playerPaddle.vel.x = 0;
+      playerPaddle.vel.y = 0;
+      playerPaddle.prevPos = { ...playerPaddle.pos };
+      this.targetPos = { ...playerPaddle.pos };
+      return;
+    }
+
     playerPaddle.pos.x = this.table.width / 2;
     playerPaddle.pos.y = this.table.height - 120;
     playerPaddle.vel.x = 0;
