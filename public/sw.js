@@ -1,4 +1,4 @@
-const CACHE_NAME = 'overclock-v6';
+const CACHE_NAME = 'overclock-v8';
 
 const STATIC_ASSETS = [
   '/',
