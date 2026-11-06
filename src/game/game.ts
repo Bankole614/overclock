@@ -81,7 +81,6 @@ export class Game {
   private readonly fixedDt = 1 / 120;
   private accumulator = 0;
   private lastTime = 0;
-  private hitStopFrames = 0;
   private isRunning = false;
   private netSyncTimer = 0;
   private audioThrottleTimer = 0;
@@ -609,7 +608,6 @@ export class Game {
 
     this.tracker.onGoalScored(scorer, robotWasOvercommitted, crossTableAngle);
     this.renderer.triggerGoalCam();
-    this.hitStopFrames = 6; // Brief dramatic impact freeze
     this.sound.triggerHaptic([60, 40, 100]);
 
     if (scorer === 'player') {
@@ -861,18 +859,11 @@ export class Game {
         this.clockSpeedGHz = Math.min(maxGHz, 1.0 + this.rallyHits * clockRamp);
         this.physics.setMaxSpeedLimit(baseSpeed + (this.clockSpeedGHz - 1.0) * speedScale);
 
-        // In intense rallies, trigger kinetic spark feedback
-        if (this.rallyHits >= 5 && Math.random() < 0.2) {
-          this.particles.emitParryBlast(this.puck.pos);
-          this.sound.playWallTick(800);
-        }
-
         if (c.isParry) {
           this.tracker.stats.parriesCount++;
           this.sound.playParry();
           this.particles.emitParryBlast(c.pos);
-          this.renderer.triggerShake(1.6, 0.35);
-          this.hitStopFrames = 9;
+          this.renderer.triggerShake(1.2, 0.25);
 
           this.playerPaddle.overdriveCharge = Math.min(100, this.playerPaddle.overdriveCharge + 35);
           this.robot.say('PARRY DETECTED: REFLECTED TRAJECTORY!', 1.8);
@@ -880,27 +871,24 @@ export class Game {
         } else {
           this.sound.playPaddleHit(c.speed, this.puck.isHyperShot);
           const hitColor = hitter === 'player' ? this.playerPaddle.color : this.robotPaddle.color;
-          this.particles.emitSparks(c.pos, 16, hitColor, 1.2, c.normal);
-          this.particles.emitShockwave(c.pos, 45, hitColor, 320);
+          this.particles.emitSparks(c.pos, 10, hitColor, 1.1, c.normal);
+          this.particles.emitShockwave(c.pos, 40, hitColor, 320);
 
           if (hitter === 'player') {
             this.playerPaddle.overdriveCharge = Math.min(100, this.playerPaddle.overdriveCharge + 8);
           }
 
           if (c.speed > 1300) {
-            this.renderer.triggerShake(c.speed / 1800, 0.18);
-            this.hitStopFrames = 3;
-          } else if (c.speed > 900) {
-            this.renderer.triggerShake(0.3, 0.1);
+            this.renderer.triggerShake(0.6, 0.12);
           }
         }
       } else if (c.type === 'wall') {
         this.tracker.onWallBounce();
         this.sound.playWallTick(c.speed);
-        this.particles.emitSparks(c.pos, 8, '#ffffff', 0.8, c.normal);
+        this.particles.emitSparks(c.pos, 5, '#ffffff', 0.8, c.normal);
       } else if (c.type === 'post') {
         this.sound.playPostBounce();
-        this.particles.emitSparks(c.pos, 20, '#ffcc00', 1.5, c.normal);
+        this.particles.emitSparks(c.pos, 12, '#ffcc00', 1.3, c.normal);
       }
     }
 
@@ -917,21 +905,28 @@ export class Game {
       }
     }
 
-    // 4. Update Puck Trails
+    // 4. Update Puck Trails (Zero-allocation ring reuse, capped at 14 segments for fast rendering)
     const puckSpeed = Math.hypot(this.puck.vel.x, this.puck.vel.y);
     this.tracker.onPuckSpeed(puckSpeed);
 
-    this.puck.trail.push({
-      x: this.puck.pos.x,
-      y: this.puck.pos.y,
-      speed: puckSpeed,
-      alpha: 1.0,
-    });
-    if (this.puck.trail.length > (this.clockSpeedGHz >= 3.0 ? 35 : 25)) {
-      this.puck.trail.shift();
+    const maxTrail = 14;
+    if (this.puck.trail.length >= maxTrail) {
+      const reused = this.puck.trail.shift()!;
+      reused.x = this.puck.pos.x;
+      reused.y = this.puck.pos.y;
+      reused.speed = puckSpeed;
+      reused.alpha = 1.0;
+      this.puck.trail.push(reused);
+    } else {
+      this.puck.trail.push({
+        x: this.puck.pos.x,
+        y: this.puck.pos.y,
+        speed: puckSpeed,
+        alpha: 1.0,
+      });
     }
-    for (const pt of this.puck.trail) {
-      pt.alpha *= 0.91;
+    for (let i = 0; i < this.puck.trail.length; i++) {
+      this.puck.trail[i].alpha *= 0.88;
     }
 
     // 5. Update Audio (Throttled to ~30Hz to prevent audio thread flooding)
@@ -1057,15 +1052,35 @@ export class Game {
       }
     }
 
-    if (this.hitStopFrames > 0) {
-      this.hitStopFrames--;
-    } else if (this.state === 'PLAYING') {
+    if (this.state === 'PLAYING') {
       this.accumulator += frameTime;
-      while (this.accumulator >= this.fixedDt && this.state === 'PLAYING') {
-        this.prevState = this.currState;
+      let steps = 0;
+      while (this.accumulator >= this.fixedDt && this.state === 'PLAYING' && steps < 4) {
+        this.prevState.puck.pos.x = this.currState.puck.pos.x;
+        this.prevState.puck.pos.y = this.currState.puck.pos.y;
+        this.prevState.puck.vel.x = this.currState.puck.vel.x;
+        this.prevState.puck.vel.y = this.currState.puck.vel.y;
+        this.prevState.playerPaddle.pos.x = this.currState.playerPaddle.pos.x;
+        this.prevState.playerPaddle.pos.y = this.currState.playerPaddle.pos.y;
+        this.prevState.robotPaddle.pos.x = this.currState.robotPaddle.pos.x;
+        this.prevState.robotPaddle.pos.y = this.currState.robotPaddle.pos.y;
+
         this.fixedStep();
-        this.currState = this.captureRenderState();
+
+        this.currState.puck.pos.x = this.puck.pos.x;
+        this.currState.puck.pos.y = this.puck.pos.y;
+        this.currState.puck.vel.x = this.puck.vel.x;
+        this.currState.puck.vel.y = this.puck.vel.y;
+        this.currState.playerPaddle.pos.x = this.playerPaddle.pos.x;
+        this.currState.playerPaddle.pos.y = this.playerPaddle.pos.y;
+        this.currState.robotPaddle.pos.x = this.robotPaddle.pos.x;
+        this.currState.robotPaddle.pos.y = this.robotPaddle.pos.y;
+
         this.accumulator -= this.fixedDt;
+        steps++;
+      }
+      if (steps >= 4) {
+        this.accumulator = 0;
       }
     }
 

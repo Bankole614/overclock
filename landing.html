@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>OVERCLOCK // Kinetic Cyber Air Hockey — High-Performance Web Action</title>
+  <meta name="description" content="A 120Hz deterministic physics engine, predictive AI bosses, and serverless WebRTC peer-to-peer multiplayer in under 35KB." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,700;1,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <style>
+    :root {
+      --bg: #070a10;
+      --panel: #0d131f;
+      --card: #131b2c;
+      --line: #1e293f;
+      --line-bright: #324468;
+      --text: #f0f4fc;
+      --muted: #8696b0;
+      --cyan: #5ee7ff;
+      --cyan-glow: rgba(94, 231, 255, 0.28);
+      --heat: #ff5a3c;
+      --gold: #ffc233;
+      --lime: #6bf28f;
+      --font-display: 'Chakra Petch', system-ui, sans-serif;
+      --font-body: 'IBM Plex Sans', -apple-system, sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+    }
+
+    body {
+      overflow-x: hidden;
+      line-height: 1.6;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Ambient Background Glow */
+    .ambient-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(94, 231, 255, 0.08) 0%, transparent 60%),
+        radial-gradient(circle at 90% 40%, rgba(255, 90, 60, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 10% 80%, rgba(107, 242, 143, 0.04) 0%, transparent 50%);
+    }
+
+    /* Cyber Grid */
+    .cyber-grid {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image: 
+        linear-gradient(to right, rgba(30, 41, 63, 0.3) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(30, 41, 63, 0.3) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 80%);
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Navigation */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 10, 16, 0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+      padding: 16px 0;
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #ffffff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.1em;
+    }
+
+    .nav-tag {
+      background: rgba(94, 231, 255, 0.12);
+      border: 1px solid rgba(94, 231, 255, 0.3);
+      color: var(--cyan);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.12em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+    .nav-links a:hover {
+      color: var(--cyan);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 13.5px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      font-family: var(--font-body);
+    }
+
+    .btn-primary {
+      background: var(--cyan);
+      border: 1px solid var(--cyan);
+      color: #040810;
+      box-shadow: 0 0 24px var(--cyan-glow);
+    }
+    .btn-primary:hover {
+      background: #8cf0ff;
+      transform: translateY(-2px);
+      box-shadow: 0 0 32px rgba(94, 231, 255, 0.45);
+    }
+
+    .btn-secondary {
+      background: var(--card);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      transform: translateY(-2px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--line-bright);
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 80px 0 60px 0;
+      text-align: center;
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(94, 231, 255, 0.08);
+      border: 1px solid rgba(94, 231, 255, 0.25);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      margin-bottom: 24px;
+      letter-spacing: 0.06em;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(40px, 7vw, 76px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+      color: #ffffff;
+      text-transform: uppercase;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #5ee7ff 20%, #ffffff 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      max-width: 720px;
+      margin: 0 auto 36px auto;
+      font-size: clamp(16px, 2vw, 19px);
+      color: #bac9e0;
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 50px;
+    }
+
+    /* Metrics Strip */
+    .metrics-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      margin-bottom: 80px;
+    }
+
+    .metric-item {
+      text-align: center;
+      border-right: 1px solid var(--line);
+    }
+    .metric-item:last-child {
+      border-right: none;
+    }
+
+    .metric-val {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--cyan);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .metric-lbl {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* Interactive Demo Banner */
+    .demo-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 40px;
+      margin-bottom: 100px;
+    }
+
+    .demo-info h3 {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 16px;
+      letter-spacing: 0.04em;
+    }
+
+    .demo-info p {
+      color: #aebfd6;
+      margin-bottom: 24px;
+      line-height: 1.65;
+    }
+
+    .demo-box {
+      position: relative;
+      background: #05080e;
+      border: 1px solid var(--line-bright);
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 4 / 5;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .demo-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+    }
+
+    .demo-overlay-pill {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13, 19, 31, 0.85);
+      border: 1px solid rgba(94, 231, 255, 0.3);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--cyan);
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+    }
+
+    /* Feature Cards Grid */
+    .section-head {
+      text-align: center;
+      max-width: 640px;
+      margin: 0 auto 50px auto;
+    }
+
+    .section-head h2 {
+      font-family: var(--font-display);
+      font-size: 34px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 100px;
+    }
+
+    .feature-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 28px;
+      transition: all 0.2s ease;
+    }
+    .feature-card:hover {
+      border-color: var(--cyan);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background: rgba(94, 231, 255, 0.1);
+      border: 1px solid rgba(94, 231, 255, 0.25);
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 20px;
+      font-family: var(--font-display);
+    }
+
+    .feature-card h4 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 10px;
+      letter-spacing: 0.02em;
+    }
+
+    .feature-card p {
+      font-size: 13.5px;
+      color: #9cb0cb;
+      line-height: 1.55;
+    }
+
+    /* Case study callout banner */
+    .case-study-banner {
+      background: linear-gradient(135deg, #101826 0%, #0d121c 100%);
+      border: 1px solid var(--line-bright);
+      border-radius: 16px;
+      padding: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 100px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .cs-content {
+      max-width: 600px;
+    }
+
+    .cs-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .cs-content h3 {
+      font-family: var(--font-display);
+      font-size: 30px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 14px;
+      letter-spacing: 0.02em;
+    }
+
+    .cs-content p {
+      color: #a8bcd8;
+      font-size: 14.5px;
+      line-height: 1.6;
+    }
+
+    .cs-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 220px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 48px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-brand {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: #ffffff;
+      font-size: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .demo-showcase { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .metrics-strip { grid-template-columns: 1fr 1fr; }
+      .metric-item:nth-child(2) { border-right: none; }
+      .case-study-banner { flex-direction: column; text-align: center; gap: 28px; padding: 32px 20px; }
+      .cs-actions { width: 100%; }
+      .footer-inner { flex-direction: column; gap: 20px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-bg"></div>
+  <div class="cyber-grid"></div>
+
+  <!-- Navigation -->
+  <nav>
+    <div class="container nav-inner">
+      <a href="/" class="nav-brand">
+        <span>OVERCLOCK</span>
+        <span class="nav-tag">v1.4 ENGINE</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#architecture">Architecture</a>
+        <a href="/case-study.html">Case Study</a>
+        <a href="/OVERCLOCK-Case-Study.pdf" target="_blank" class="btn btn-outline" style="padding: 6px 14px; font-size: 12px;">Get PDF</a>
+        <a href="/" class="btn btn-primary" style="padding: 7px 16px; font-size: 12.5px;">Play Game</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container">
+      <div class="badge-pill">
+        <span>⚡ 120HZ DETERMINISTIC PHYSICS • SERVERLESS WEBRTC</span>
+      </div>
+      <h1 class="hero-title">
+        BEAT THE MACHINE THAT<br>
+        <span>SEES EVERY SHOT COMING</span>
+      </h1>
+      <p class="hero-sub">
+        High-octane cyber air hockey engineered for competitive esports. Console-smooth 120 FPS physics, predictive heuristic AI bosses, and zero-latency peer-to-peer 1v1 multiplayer in under 35KB.
+      </p>
+      <div class="hero-actions">
+        <a href="/" class="btn btn-primary">⚡ Launch Game Instantly</a>
+        <a href="/case-study.html" class="btn btn-secondary">📄 Read Architecture Case Study</a>
+        <a href="/OVERCLOCK-Case-Study.pdf" download="OVERCLOCK-Case-Study.pdf" class="btn btn-outline">📥 Download PDF (4 Pages)</a>
+      </div>
+
+      <!-- Key Performance Metrics Strip -->
+      <div class="metrics-strip">
+        <div class="metric-item">
+          <div class="metric-val">120 FPS</div>
+          <div class="metric-lbl">Mobile Vector Refresh</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">120 Hz</div>
+          <div class="metric-lbl">Deterministic Physics</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">&lt; 35 KB</div>
+          <div class="metric-lbl">Zero-Engine Bundle</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-val">$0.00</div>
+          <div class="metric-lbl">Serverless Multiplayer</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Live Demo Showcase -->
+  <section class="container" style="margin-bottom: 80px;">
+    <div class="demo-showcase">
+      <div class="demo-info">
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--cyan); letter-spacing: 0.12em; text-transform: uppercase;">Interactive Physics Sandbox</span>
+        <h3>Direct 1:1 Kinetic Control</h3>
+        <p>
+          Experience the custom deterministic physics engine right in your browser. Drag or swipe your mallet below to strike the puck. Notice the instantaneous zero-latency tracking, predictive rail bounces, and kinetic momentum transfer.
+        </p>
+        <div style="display: flex; gap: 12px;">
+          <a href="/" class="btn btn-primary">Play Full Arcade Match</a>
+        </div>
+      </div>
+      <div class="demo-box">
+        <canvas id="miniSandboxCanvas" class="demo-canvas" width="400" height="500"></canvas>
+        <div class="demo-overlay-pill">DRAG MOUSE OR SWIPE TO DEFLECT PUCK</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features Grid -->
+  <section id="features" class="container">
+    <div class="section-head">
+      <h2>Engineered For Perfection</h2>
+      <p>Built from mathematical first principles with zero external game frameworks or heavy runtime bloat.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">01</div>
+        <h4>Deterministic 120Hz Physics</h4>
+        <p>Decoupled fixed-step accumulator (<font face="monospace">dt = 0.00833s</font>) with continuous collision detection and separating-axis velocity guards preventing tunneling at 2,500 px/s.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">02</div>
+        <h4>Predictive Heuristic AI</h4>
+        <p>Calculates multi-wall bank-shot geometry to anticipate incoming shots, enriched with human-reaction latency buffers and dynamic aiming jitter across 4 boss tiers.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">03</div>
+        <h4>Serverless WebRTC P2P</h4>
+        <p>Play 1v1 with anyone worldwide via 4-character room codes. Host-authoritative 30Hz delta synchronization over browser DataChannels with $0 hosting cost.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">04</div>
+        <h4>Kinetic Parry &amp; Overdrive</h4>
+        <p>Deflect shots within a 150ms timing window to unleash 1.55x velocity multipliers, radial EMP shockwaves, and game-changing Overdrive smashes.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">05</div>
+        <h4>Zero-Allocation GPU Loop</h4>
+        <p>Batched vector grids, in-place coordinate mutation, and zero <font face="monospace">shadowBlur</font> Gaussian passes to ensure flatline 120 FPS on all mobile devices.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">06</div>
+        <h4>Offline-First PWA</h4>
+        <p>Install directly to your phone's home screen. Play anywhere—even on subway rides or flights—with 100% offline Service Worker cache support.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Case Study Callout Banner -->
+  <section id="architecture" class="container">
+    <div class="case-study-banner">
+      <div class="cs-content">
+        <span class="cs-tag">Full-Stack Portfolio Documentation</span>
+        <h3>Technical Systems &amp; Engineering Case Study</h3>
+        <p>
+          Dive deep into the mathematics, architecture diagrams, benchmark matrices, and networking protocols behind OVERCLOCK. Formatted as an executive 4-page engineering case study.
+        </p>
+      </div>
+      <div class="cs-actions">
+        <a href="/case-study.html" class="btn btn-primary" style="justify-content: center;">📄 View Web Case Study</a>
+        <a href="/OVERCLOCK-Case-Study.pdf" download="OVERCLOCK-Case-Study.pdf" class="btn btn-secondary" style="justify-content: center;">📥 Download PDF Document</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-inner">
+      <div class="footer-brand">OVERCLOCK // Kinetic Cyber Air Hockey</div>
+      <div>Crafted with TypeScript, Canvas 2D &amp; WebRTC • 100% Client-Side</div>
+      <div><a href="/" style="color: var(--cyan); text-decoration: none;">Launch Game →</a></div>
+    </div>
+  </footer>
+
+  <!-- Mini Interactive Sandbox Script -->
+  <script>
+    (function() {
+      const canvas = document.getElementById('miniSandboxCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width, h = canvas.height;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0) {
+          canvas.width = rect.width * window.devicePixelRatio;
+          canvas.height = rect.height * window.devicePixelRatio;
+          w = canvas.width;
+          h = canvas.height;
+        }
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      let puck = { x: w / 2, y: h / 2, vx: 260, vy: 340, r: 14 };
+      let mallet = { x: w / 2, y: h * 0.82, vx: 0, vy: 0, r: 24 };
+      let targetMallet = { x: mallet.x, y: mallet.y };
+      let botMallet = { x: w / 2, y: h * 0.18, r: 24 };
+
+      function onPointerMove(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const scaleX = w / rect.width;
+        const scaleY = h / rect.height;
+        targetMallet.x = (clientX - rect.left) * scaleX;
+        targetMallet.y = Math.max(h * 0.52, Math.min(h - mallet.r - 10, (clientY - rect.top) * scaleY));
+      }
+
+      canvas.addEventListener('mousemove', onPointerMove);
+      canvas.addEventListener('touchmove', onPointerMove, { passive: true });
+
+      let lastTime = performance.now();
+
+      function loop(t) {
+        requestAnimationFrame(loop);
+        const dt = Math.min(0.033, (t - lastTime) / 1000);
+        lastTime = t;
+
+        // Mallet smoothing
+        const pX = mallet.x, pY = mallet.y;
+        mallet.x += (targetMallet.x - mallet.x) * 0.45;
+        mallet.y += (targetMallet.y - mallet.y) * 0.45;
+        mallet.vx = (mallet.x - pX) / dt;
+        mallet.vy = (mallet.y - pY) / dt;
+
+        // Simple bot tracking
+        botMallet.x += (puck.x - botMallet.x) * 0.08;
+
+        // Puck physics
+        puck.x += puck.vx * dt;
+        puck.y += puck.vy * dt;
+
+        // Side rails
+        if (puck.x - puck.r < 10) { puck.x = 10 + puck.r; puck.vx = Math.abs(puck.vx); }
+        if (puck.x + puck.r > w - 10) { puck.x = w - 10 - puck.r; puck.vx = -Math.abs(puck.vx); }
+        // End rails
+        if (puck.y - puck.r < 10) { puck.y = 10 + puck.r; puck.vy = Math.abs(puck.vy); }
+        if (puck.y + puck.r > h - 10) { puck.y = h - 10 - puck.r; puck.vy = -Math.abs(puck.vy); }
+
+        // Puck vs Player Mallet collision
+        const dx = puck.x - mallet.x;
+        const dy = puck.y - mallet.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = puck.r + mallet.r;
+        if (dist < minDist && dist > 0) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const relNormVel = (puck.vx - mallet.vx) * nx + (puck.vy - mallet.vy) * ny;
+          if (relNormVel < 0) {
+            puck.x = mallet.x + nx * minDist;
+            puck.y = mallet.y + ny * minDist;
+            const impulse = -1.8 * relNormVel;
+            puck.vx += nx * impulse + mallet.vx * 0.3;
+            puck.vy += ny * impulse + mallet.vy * 0.3;
+          }
+        }
+
+        // Render
+        ctx.fillStyle = '#06090f';
+        ctx.fillRect(0, 0, w, h);
+
+        // Center line & circle
+        ctx.strokeStyle = '#1b263b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(10, h / 2);
+        ctx.lineTo(w - 10, h / 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, 45, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Bot Mallet
+        ctx.fillStyle = '#ff5a3c';
+        ctx.beginPath();
+        ctx.arc(botMallet.x, botMallet.y, botMallet.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Player Mallet
+        ctx.fillStyle = '#5ee7ff';
+        ctx.beginPath();
+        ctx.arc(mallet.x, mallet.y, mallet.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Puck
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(puck.x, puck.y, puck.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      requestAnimationFrame(loop);
+    })();
+  </script>
+
+</body>
+</html>
+

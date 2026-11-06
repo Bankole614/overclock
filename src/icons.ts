@@ -5,7 +5,7 @@ import {
   RotateCcw, House, LogOut, Volume2, Music, Layers, Crosshair, Vibrate, EyeOff,
   Gamepad2, Percent, Flame, Timer, Skull, Lock, Bot, Ghost, Crown, Worm, Check,
   Download, Share2, Share, Smartphone, Maximize, Expand, BatteryCharging, Layout,
-  ArrowDownToLine, PlusSquare, MoreVertical,
+  ArrowDownToLine, PlusSquare, MoreVertical, FileText,
 } from 'lucide';
 
 const icons = {
@@ -15,7 +15,7 @@ const icons = {
   House, LogOut, Volume2, Music, Layers, Crosshair, Vibrate, EyeOff, Gamepad2,
   Percent, Flame, Timer, Skull, Lock, Bot, Ghost, Crown, Worm, Check,
   Download, Share2, Share, Smartphone, Maximize, Expand, BatteryCharging, Layout,
-  ArrowDownToLine, PlusSquare, MoreVertical,
+  ArrowDownToLine, PlusSquare, MoreVertical, FileText,
 };
 
 export const refreshIcons = () => createIcons({ icons });

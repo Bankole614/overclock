@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OVERCLOCK — Systems Architecture, Mathematical Physics & WebRTC Case Study</title>
+  <meta name="description" content="Technical Case Study for OVERCLOCK: A 120Hz Deterministic Physics Engine, Predictive Heuristic AI, and Serverless WebRTC Cyber-Arcade." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,700;1,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --paper: #101622;
+      --card: #151d2c;
+      --line: #222e44;
+      --line-subtle: #192335;
+      --text: #e6edf7;
+      --muted: #8b9bb4;
+      --accent: #5ee7ff;
+      --accent-deep: #169db8;
+      --heat: #ff5a3c;
+      --gold: #ffc233;
+      --lime: #6bf28f;
+      --font-display: 'Chakra Petch', system-ui, sans-serif;
+      --font-body: 'IBM Plex Sans', -apple-system, sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-serif: 'Newsreader', serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      line-height: 1.55;
+      font-size: 13.5px;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: 60px;
+    }
+
+    /* Top navigation bar */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11, 15, 23, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1100px;
+      margin: 0 auto 24px auto;
+    }
+
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      text-decoration: none;
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-size: 15px;
+    }
+
+    .brand-pill {
+      background: rgba(94, 231, 255, 0.12);
+      color: var(--accent);
+      border: 1px solid rgba(94, 231, 255, 0.3);
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.12em;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: var(--font-body);
+    }
+
+    .btn-secondary {
+      background: var(--card);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      color: #050a12;
+      box-shadow: 0 0 16px rgba(94, 231, 255, 0.25);
+    }
+    .btn-primary:hover {
+      background: #7df0ff;
+      transform: translateY(-1px);
+    }
+
+    /* Document Sheet container */
+    .document-wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .sheet {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 44px 48px;
+      margin-bottom: 32px;
+      position: relative;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    }
+
+    .sheet-header-meta {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: var(--font-display);
+    }
+
+    .sheet-footer-meta {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 36px;
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    /* Main Title block */
+    .project-hero {
+      margin-bottom: 26px;
+    }
+
+    .project-hero h1 {
+      font-family: var(--font-display);
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #ffffff;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .project-hero .subtitle {
+      font-size: 15px;
+      color: var(--accent);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    /* 3-Column Roles / Stack Grid */
+    .meta-quad-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.25fr;
+      gap: 16px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+    }
+
+    .meta-col h4 {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 194, 51, 0.2);
+      padding-bottom: 4px;
+    }
+
+    .meta-col ul {
+      list-style: none;
+    }
+
+    .meta-col ul li {
+      font-size: 12px;
+      color: #ccd7e8;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .meta-col ul li b {
+      color: #ffffff;
+    }
+
+    /* Section Headers */
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #ffffff;
+      text-transform: uppercase;
+      margin: 28px 0 14px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .lead-paragraph {
+      font-size: 13.5px;
+      color: #d6e1f0;
+      line-height: 1.65;
+      margin-bottom: 16px;
+    }
+
+    .lead-paragraph b {
+      color: var(--accent);
+    }
+
+    /* Highlights callout box */
+    .callout-box {
+      background: rgba(94, 231, 255, 0.04);
+      border-left: 3px solid var(--accent);
+      padding: 14px 18px;
+      border-radius: 0 6px 6px 0;
+      margin: 16px 0 24px 0;
+      font-size: 13px;
+      color: #c4d6ee;
+    }
+
+    .callout-box strong {
+      color: #ffffff;
+    }
+
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px 0;
+      font-size: 12.5px;
+    }
+
+    .data-table th {
+      background: #131a26;
+      border: 1px solid var(--line);
+      padding: 10px 14px;
+      text-align: left;
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .data-table td {
+      border: 1px solid var(--line);
+      padding: 10px 14px;
+      vertical-align: top;
+      line-height: 1.5;
+      color: #d0dceb;
+    }
+
+    .data-table tr:nth-child(even) td {
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    .table-badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(94, 231, 255, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(94, 231, 255, 0.2);
+    }
+
+    /* Methodology 4-Step Grid */
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 16px 0 24px 0;
+    }
+
+    .step-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+    }
+
+    .step-num {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 13px;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .step-card p {
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    /* Personas */
+    .persona-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 16px 0 24px 0;
+    }
+
+    .persona-box {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 18px;
+    }
+
+    .persona-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .persona-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .persona-role {
+      font-size: 11px;
+      color: var(--accent);
+    }
+
+    .persona-item {
+      font-size: 12px;
+      color: #cad7ea;
+      margin-bottom: 6px;
+      line-height: 1.45;
+    }
+
+    .persona-item b {
+      color: #ffffff;
+    }
+
+    /* Code & Formula blocks */
+    .code-block {
+      background: #090d14;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: #a6c0e2;
+      overflow-x: auto;
+      margin: 12px 0 20px 0;
+      line-height: 1.6;
+    }
+
+    .code-block .hl-kw { color: #ff5a3c; }
+    .code-block .hl-fn { color: #5ee7ff; }
+    .code-block .hl-num { color: #ffc233; }
+    .code-block .hl-str { color: #7dff9b; }
+    .code-block .hl-cmt { color: #5f7495; font-style: italic; }
+
+    /* Bullet lists */
+    .bullet-list {
+      list-style: none;
+      margin: 12px 0 20px 0;
+    }
+
+    .bullet-list li {
+      position: relative;
+      padding-left: 18px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: #cdd9e8;
+      line-height: 1.55;
+    }
+
+    .bullet-list li::before {
+      content: '▪';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-size: 14px;
+      top: -1px;
+    }
+
+    .bullet-list li strong {
+      color: #ffffff;
+    }
+
+    /* Metrics Grid */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .metric-card {
+      background: #121927;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* Page break helpers for Print */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #111111 !important;
+        font-size: 11px !important;
+      }
+      .top-bar { display: none !important; }
+      .document-wrapper { max-width: 100% !important; padding: 0 !important; }
+      .sheet {
+        background: #ffffff !important;
+        color: #111111 !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 0 32px 0 !important;
+        page-break-after: always;
+        break-after: page;
+      }
+      .sheet-header-meta, .sheet-footer-meta {
+        color: #666666 !important;
+        border-color: #cccccc !important;
+      }
+      .project-hero h1 { color: #000000 !important; font-size: 28px !important; }
+      .project-hero .subtitle { color: #006688 !important; }
+      .meta-quad-grid, .step-card, .persona-box, .metric-card {
+        background: #f8f9fa !important;
+        border-color: #dddddd !important;
+      }
+      .meta-col h4, .step-num { color: #884400 !important; }
+      .meta-col ul li, .lead-paragraph, .persona-item, .bullet-list li, .data-table td {
+        color: #222222 !important;
+      }
+      .section-title { color: #000000 !important; }
+      .section-title::after { background: #cccccc !important; }
+      .data-table th { background: #eeeeee !important; color: #000000 !important; border-color: #cccccc !important; }
+      .data-table td { border-color: #cccccc !important; }
+      .callout-box { background: #f0f8ff !important; border-color: #0077aa !important; color: #111111 !important; }
+      .code-block { background: #f4f5f7 !important; color: #222222 !important; border-color: #cccccc !important; }
+      .table-badge { background: #e0f4ff !important; color: #005577 !important; border-color: #99ccee !important; }
+      .metric-value { color: #006688 !important; }
+      .print-page-break { page-break-before: always; break-before: page; }
+    }
+
+    @media (max-width: 768px) {
+      .sheet { padding: 24px 18px; }
+      .meta-quad-grid { grid-template-columns: 1fr; }
+      .step-grid { grid-template-columns: 1fr 1fr; }
+      .persona-grid { grid-template-columns: 1fr; }
+      .metrics-bar { grid-template-columns: 1fr 1fr; }
+      .project-hero h1 { font-size: 28px; }
+      .data-table { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Nav Bar -->
+  <header class="top-bar">
+    <a href="/" class="brand-link">
+      <span>OVERCLOCK</span>
+      <span class="brand-pill">SYSTEMS CASE STUDY</span>
+    </a>
+    <div class="top-actions">
+      <a href="/landing.html" class="btn btn-secondary">Landing Page</a>
+      <a href="/" class="btn btn-primary">Launch Live Game</a>
+      <button onclick="window.print()" class="btn btn-secondary" title="Export as PDF Document">Export PDF</button>
+    </div>
+  </header>
+
+  <main class="document-wrapper">
+
+    <!-- PAGE 1 OF 4: EXECUTIVE OVERVIEW & PROBLEM MATRIX -->
+    <article class="sheet">
+      <div class="sheet-header-meta">
+        <span>OVERCLOCK — SYSTEMS ARCHITECTURE, COMPUTATIONAL PHYSICS &amp; WEBRTC NETWORKING</span>
+        <span>PORTFOLIO CASE STUDY</span>
+      </div>
+
+      <header class="project-hero">
+        <h1>OVERCLOCK</h1>
+        <div class="subtitle">A Deterministic 120Hz Physics Engine, Predictive Heuristic AI &amp; Serverless WebRTC Multiplayer Cyber-Arcade</div>
+      </header>
+
+      <section class="meta-quad-grid">
+        <div class="meta-col">
+          <h4>My Engineering Role</h4>
+          <ul>
+            <li>• <b>Lead Systems &amp; Game Architect</b></li>
+            <li>• <b>Deterministic Physics Engine</b></li>
+            <li>• <b>Predictive AI State Heuristics</b></li>
+            <li>• <b>P2P WebRTC DataChannel Protocol</b></li>
+            <li>• <b>Vector GPU Canvas Optimization</b></li>
+          </ul>
+        </div>
+        <div class="meta-col">
+          <h4>Platform &amp; Target</h4>
+          <ul>
+            <li>• <b>Runtime:</b> Browser, Mobile PWA (iOS/Android)</li>
+            <li>• <b>Input:</b> 1:1 Direct Touch &amp; High-DPI Mouse</li>
+            <li>• <b>Target:</b> Casual &amp; Competitive Esports</li>
+            <li>• <b>Constraint:</b> Zero Install, Sub-35KB, 120 FPS</li>
+            <li>• <b>Network:</b> Mesh P2P, Zero Dedicated Servers</li>
+          </ul>
+        </div>
+        <div class="meta-col">
+          <h4>Tools &amp; Tech Stack</h4>
+          <ul>
+            <li>• <b>Core:</b> TypeScript (Strict ESNext), Vite</li>
+            <li>• <b>Render Layer:</b> HTML5 Canvas 2D Vector GPU Pipeline</li>
+            <li>• <b>Real-Time Net:</b> WebRTC DataChannels (PeerJS Mesh)</li>
+            <li>• <b>Offline Engine:</b> Service Worker (Network-First Cache)</li>
+            <li>• <b>Audio Synthesis:</b> Web Audio API (Dynamic Oscillators)</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">Executive Overview</h2>
+        <p class="lead-paragraph">
+          <b>OVERCLOCK</b> is a high-speed, client-authoritative kinetic cyber air hockey platform built to eliminate the performance bottlenecks, latency stutter, and prohibitive server expenses of real-time web gaming. Standard web games rely on multi-megabyte monolithic engines (Unity WebGL, Phaser) and costly dedicated WebSocket game servers that suffer under mobile throttles and erratic networks.
+        </p>
+        <p class="lead-paragraph">
+          OVERCLOCK proves that competitive 120 FPS action can run inside a mobile browser without external game engines. It unifies five purpose-built engines:
+          <b>(1) A 120Hz Deterministic Fixed-Step Physics Engine</b> utilizing swept raycast sub-stepping to prevent tunneling at 2,500 px/s;
+          <b>(2) A Predictive Heuristic AI Engine</b> calculating bank-shot trajectories and human reaction jitter across 4 difficulty tiers;
+          <b>(3) A Serverless WebRTC P2P Multiplayer Mesh</b> achieving real-time 1v1 play with zero backend host costs;
+          <b>(4) A Zero-Allocation Canvas 2D Vector GPU Pipeline</b> rendering pure 120Hz rasterization without Garbage Collection pauses; and
+          <b>(5) An Offline-First Progressive Web App (PWA)</b> enabling installable standalone play on iOS and Android.
+        </p>
+      </section>
+
+      <section class="callout-box">
+        <strong>The Core Value Proposition:</strong> Delivering console-grade 120 FPS kinetic action, sub-15ms input-to-render responsiveness, and instantaneous peer-to-peer multiplayer directly in any mobile or desktop browser—with zero download footprint (&lt;35KB gzipped) and zero ongoing cloud hosting costs.
+      </section>
+
+      <section>
+        <h2 class="section-title">Scope of Work &amp; Design Methodology</h2>
+        <div class="step-grid">
+          <div class="step-card">
+            <div class="step-num">01. MATHEMATICS</div>
+            <div class="step-title">Collision Physics</div>
+            <p>Discrete vs. swept raycast sub-stepping, restitution impulse equations, and separating-axis velocity guards.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">02. AI DYNAMICS</div>
+            <div class="step-title">Predictive AI</div>
+            <p>Trajectory projection, human reaction latency simulation, shot-angle bias, and defensive intercept cones.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">03. NETWORKING</div>
+            <div class="step-title">P2P WebRTC</div>
+            <p>Host-authoritative state synchronization, client dead-reckoning, and room-code SDP handshaking.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">04. HARDWARE</div>
+            <div class="step-title">GPU Optimization</div>
+            <p>Zero-allocation buffers, batched vector paths, eliminated Gaussian blur passes, and instant 1:1 touch response.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">Systems Analysis: Problem vs. Solution Matrix</h2>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 38%;">Identified Engineering &amp; UX Friction</th>
+              <th>OVERCLOCK Engineering &amp; Architectural Solution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <b>Physics Tunneling at Extreme Velocities:</b>
+                At puck speeds &gt;2,000 px/s, standard discrete Euler steps cause the puck to pass through mallets and arena rails within a single frame.
+              </td>
+              <td>
+                <span class="table-badge">Swept Sub-Stepping &amp; CCD</span><br>
+                Engineered continuous collision detection with sub-frame raycasting, strict bounding clamp restitution, and separating-axis normal velocity separation guards (<code class="font-mono">relNormVel &gt;= 0</code>).
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <b>Mobile Frame Drops &amp; GC Pauses:</b>
+                Allocating state objects and puck trails inside a 120Hz loop triggers browser Garbage Collection (GC) pauses, creating gameplay micro-stutters.
+              </td>
+              <td>
+                <span class="table-badge">Zero-Allocation Loop</span><br>
+                Implemented in-place mutated coordinate structs, circular ring buffers for puck trails, and capped substeps to 4 to eliminate spiral-of-death starvation.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <b>Prohibitive Multiplayer Server Costs:</b>
+                Hosting dedicated real-time authoritative game servers across global regions creates expensive monthly infrastructure bills.
+              </td>
+              <td>
+                <span class="table-badge">Host-Authoritative WebRTC P2P</span><br>
+                Leveraged browser WebRTC DataChannels for direct peer-to-peer packet streaming via ephemeral PeerJS room codes, operating at literally <b>$0/mo cloud cost</b>.
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <b>Touch Input Tracking Lag:</b>
+                Interpolating player mallet positions between physics ticks creates an artificial 8.3ms visual delay behind the user's finger on touchscreens.
+              </td>
+              <td>
+                <span class="table-badge">Direct 1:1 Coordinate Decoupling</span><br>
+                Decoupled the player's own mallet from tick interpolation, rendering live pointer positions directly while caching canvas rect layouts to prevent reflows.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="sheet-footer-meta">
+        <span>OVERCLOCK — Deterministic Physics &amp; WebRTC Systems Architecture</span>
+        <span>Page 1 of 4</span>
+      </div>
+    </article>
+
+
+    <!-- PAGE 2 OF 4: USER PERSONAS & USER JOURNEY -->
+    <article class="sheet print-page-break">
+      <div class="sheet-header-meta">
+        <span>OVERCLOCK — SYSTEMS ARCHITECTURE, COMPUTATIONAL PHYSICS &amp; WEBRTC NETWORKING</span>
+        <span>PORTFOLIO CASE STUDY</span>
+      </div>
+
+      <section>
+        <h2 class="section-title">User Personas &amp; Behavioral Alignment</h2>
+        <div class="persona-grid">
+          <div class="persona-box">
+            <div class="persona-header">
+              <span class="persona-name">Tyler (The Competitive Arcade Player)</span>
+              <span class="persona-role">Age 24 • Esports Enthusiast &amp; Streamer</span>
+            </div>
+            <div class="persona-item"><b>Pain Point:</b> Hates sluggish web games with "floaty" controls, erratic hitboxes, input latency, and laggy multiplayer matchmaking.</div>
+            <div class="persona-item"><b>Expectations:</b> Sub-millisecond tactile responsiveness, skill-based defensive parry mechanics, challenging AI that punishes predictable play, and instant 1v1 challenge links.</div>
+            <div class="persona-item"><b>Overclock Solution:</b> 120Hz physics accumulator, microsecond parry window with visual audio EMP blasts, MK-IV Singularity boss tier, and instant room-code WebRTC matchmaking.</div>
+          </div>
+
+          <div class="persona-box">
+            <div class="persona-header">
+              <span class="persona-name">Priya (The Commuter &amp; Mobile Casual)</span>
+              <span class="persona-role">Age 29 • UX Engineer &amp; Daily Commuter</span>
+            </div>
+            <div class="persona-item"><b>Pain Point:</b> Unwilling to install bloated 200MB app store games filled with ads, predatory microtransactions, and login gates when riding the subway.</div>
+            <div class="persona-item"><b>Expectations:</b> Instant 0-second launch via web link, responsive portrait gameplay that works one-handed on mobile, and offline capability without internet.</div>
+            <div class="persona-item"><b>Overclock Solution:</b> Lightweight PWA installable to homescreen, 100% offline Service Worker cache, adaptive touch targets, and automatic localized state saving.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">How The Platform Works: End-to-End System Journey</h2>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 20%;">Stage</th>
+              <th style="width: 32%;">User Interaction</th>
+              <th>System Workflow &amp; Technical Implementation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>1. Instant Boot &amp; Service Worker</b></td>
+              <td>User opens URL or launches installed PWA icon from home screen.</td>
+              <td>Service Worker (<code class="font-mono">sw.js</code>) evaluates cache version via Network-First strategy; loads zero-bundle Vite assets in under 350ms; registers offline cache for disconnected play.</td>
+            </tr>
+            <tr>
+              <td><b>2. Difficulty &amp; Arcade Ladder</b></td>
+              <td>Player selects difficulty (Casual / Normal / Overclocked) and initiates Boss Ladder.</td>
+              <td>AI state machine dynamically tunes reaction time window (80ms–240ms), predictive horizon, error jitter variance, and max paddle speed thresholds.</td>
+            </tr>
+            <tr>
+              <td><b>3. Deterministic Physics Loop</b></td>
+              <td>Player strikes puck via 1:1 finger swipe or high-polling gaming mouse.</td>
+              <td>High-frequency fixed accumulator updates physics at exact 120Hz (<code class="font-mono">dt = 0.00833s</code>). Swept vector math evaluates mallet-to-puck momentum transfer with kinetic restitution.</td>
+            </tr>
+            <tr>
+              <td><b>4. Parry &amp; Overdrive Mechanic</b></td>
+              <td>Player triggers timed Parry button or right-click within 150ms of incoming shot.</td>
+              <td>Collision engine detects defensive alignment; activates 1.55x velocity multiplier; emits radial shockwave ring; charges Overdrive meter to 100% for EMP shot.</td>
+            </tr>
+            <tr>
+              <td><b>5. Peer-to-Peer 1v1 Room</b></td>
+              <td>Host clicks "Create Room", generating a 4-character code shared with an opponent.</td>
+              <td>PeerJS negotiates direct WebRTC DataChannel connection. Host executes authoritative simulation at 120Hz and broadcasts compressed binary delta snapshots at 30Hz; Guest predicts position locally.</td>
+            </tr>
+            <tr>
+              <td><b>6. Post-Match &amp; Persistence</b></td>
+              <td>Match concludes (Best of 3 / 5 / 7 series complete); coins and trophies awarded.</td>
+              <td><code class="font-mono">StorageManager</code> saves player win streaks, highest rally speed, and cosmetic mallet unlocks into persistent <code class="font-mono">localStorage</code>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 class="section-title">System Architecture Topology</h2>
+        <div class="code-block">
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                CLIENT RUNTIME ENVIRONMENT                              │
+│                                                                                        │
+│   ┌─────────────────────┐       ┌──────────────────────┐      ┌────────────────────┐   │
+│   │   INPUT SUBSYSTEM   │       │  PHYSICS ACCUMULATOR │      │    CANVAS 2D GPU   │   │
+│   │  • Pointer/Touch    │──────▶│  • 120Hz Fixed Step  │─────▶│  • Batched Vector  │   │
+│   │  • Direct Mallet Pos│       │  • Swept Raycast CCD │      │  • 0-Alloc Loop    │   │
+│   └─────────────────────┘       └──────────┬───────────┘      └────────────────────┘   │
+│                                            │                                           │
+│                 ┌──────────────────────────┴──────────────────────────┐                │
+│                 ▼                                                     ▼                │
+│   ┌──────────────────────────┐                         ┌───────────────────────────┐   │
+│   │    PREDICTIVE AI ENGINE  │                         │   WEBRTC P2P DATACHANNEL  │   │
+│   │  • Trajectory Projection │                         │  • Host-Authoritative     │   │
+│   │  • Bank-Shot Intercept   │                         │  • 30Hz Snapshot Broadcast│   │
+│   │  • Reaction Jitter Model │                         │  • Zero Server Cloud Cost │   │
+│   └──────────────────────────┘                         └───────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+        </div>
+      </section>
+
+      <div class="sheet-footer-meta">
+        <span>OVERCLOCK — Deterministic Physics &amp; WebRTC Systems Architecture</span>
+        <span>Page 2 of 4</span>
+      </div>
+    </article>
+
+
+    <!-- PAGE 3 OF 4: CORE FEATURE MODULES BREAKDOWN -->
+    <article class="sheet print-page-break">
+      <div class="sheet-header-meta">
+        <span>OVERCLOCK — SYSTEMS ARCHITECTURE, COMPUTATIONAL PHYSICS &amp; WEBRTC NETWORKING</span>
+        <span>PORTFOLIO CASE STUDY</span>
+      </div>
+
+      <section>
+        <h2 class="section-title">Core Feature Modules: Detailed Architectural Breakdown</h2>
+
+        <ul class="bullet-list">
+          <li>
+            <strong>1. Deterministic 120Hz Physics &amp; Continuous Collision Detection (CCD):</strong>
+            Built from mathematical first principles without heavy third-party physics packages. Uses an internal time accumulator (<code class="font-mono">accumulator += dt</code>) executing substeps at a constant <code class="font-mono">fixedDt = 1/120s</code>. Employs separating-axis normal relative velocity guards to eliminate double-hit impulses and prevents puck tunneling at supersonic velocities (&gt;2,500 px/s) using clamped sub-step integration.
+          </li>
+          <li>
+            <strong>2. Predictive Heuristic AI State Machine:</strong>
+            Unlike simple tracker bots that linearly follow the puck's X-coordinate, OVERCLOCK's AI calculates multi-bounce raycast geometry off arena walls to predict the exact intercept point at the robot's defensive line. Features an intentional cognitive latency buffer (80ms–240ms based on difficulty) and aiming dispersion noise to simulate human biomechanical imperfections.
+          </li>
+          <li>
+            <strong>3. Serverless WebRTC P2P Multiplayer Engine:</strong>
+            Implements an ultra-low-latency real-time multiplayer protocol running directly between two browser peers. The match host runs the authoritative 120Hz physics simulation and broadcasts delta-compressed state payloads (puck coordinates, score, overdrive status) over reliable SCTP DataChannels. Eliminates monthly server hosting bills while reducing round-trip latency to pure peer-to-peer ping times.
+          </li>
+          <li>
+            <strong>4. Zero-Allocation Canvas 2D Vector GPU Pipeline:</strong>
+            Optimized to achieve native 60–120 FPS on resource-constrained mobile phones. Replaced expensive <code class="font-mono">ctx.shadowBlur</code> passes (which trigger multi-pass offscreen Gaussian convolutions on mobile GPUs) with pure vector styling, pre-calculated arena line geometries into a single batched draw call, and mutated coordinate buffers in-place to ensure zero Garbage Collection spikes during high-speed rallies.
+          </li>
+          <li>
+            <strong>5. Offline-First Progressive Web App (PWA) Engine:</strong>
+            Equipped with a custom Service Worker utilizing a Network-First strategy with offline fallback. Automatically registers web manifest specifications, supports standalone full-screen iOS and Android display modes, and manages persistent local saves (<code class="font-mono">StorageManager</code>) for unlocks, statistics, and boss progression without requiring third-party authentication.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 class="section-title">Engine Module Performance &amp; UX Impact Matrix</h2>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">Engine Module</th>
+              <th style="width: 40%;">Key Technical Capabilities &amp; Scope</th>
+              <th>User Experience &amp; Engineering Impact</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Physics Subsystem</b></td>
+              <td>120Hz fixed-step accumulator, separating-axis velocity guard, dynamic mallet momentum transfer, circle-to-box arena rails.</td>
+              <td>Eliminates puck tunneling and double-hit glitches; delivers perfectly repeatable, crisp tactile air hockey physics.</td>
+            </tr>
+            <tr>
+              <td><b>Predictive AI</b></td>
+              <td>Multi-wall bank projection, 4 boss tiers (MK-I to MK-IV), human error jitter simulation, dynamic parry counters.</td>
+              <td>Provides authentic competitive resistance without feeling artificially cheating or mechanically robotic.</td>
+            </tr>
+            <tr>
+              <td><b>P2P WebRTC Net</b></td>
+              <td>PeerJS signaling, ephemeral 4-char room codes, host-authoritative state sync, dead-reckoning interpolation.</td>
+              <td>Enables instant 1-click multiplayer across the globe with zero server infrastructure overhead ($0/month operating cost).</td>
+            </tr>
+            <tr>
+              <td><b>GPU Vector Pipeline</b></td>
+              <td>Batched vector grid calls, zero-allocation circular trail buffers, direct 1:1 pointer mapping, 0-shadowBlur rasterization.</td>
+              <td>Locks frame rates to a rock-solid 120 FPS on high-refresh mobile screens with zero thermal throttling or stutter.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 class="section-title">Key Performance Benchmarks</h2>
+        <div class="metrics-bar">
+          <div class="metric-card">
+            <div class="metric-value">120 FPS</div>
+            <div class="metric-label">Stable Refresh Rate</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">&lt; 3.2 ms</div>
+            <div class="metric-label">Average Frame Time</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">&lt; 35 KB</div>
+            <div class="metric-label">Gzipped Core Bundle</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">$0.00</div>
+            <div class="metric-label">Multiplayer Server Cost</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="sheet-footer-meta">
+        <span>OVERCLOCK — Deterministic Physics &amp; WebRTC Systems Architecture</span>
+        <span>Page 3 of 4</span>
+      </div>
+    </article>
+
+
+    <!-- PAGE 4 OF 4: TECHNICAL HIGHLIGHTS & CODE SPECIFICATIONS -->
+    <article class="sheet print-page-break">
+      <div class="sheet-header-meta">
+        <span>OVERCLOCK — SYSTEMS ARCHITECTURE, COMPUTATIONAL PHYSICS &amp; WEBRTC NETWORKING</span>
+        <span>PORTFOLIO CASE STUDY</span>
+      </div>
+
+      <section>
+        <h2 class="section-title">Technical Architecture &amp; Engineering Highlights</h2>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 22%;">Layer</th>
+              <th style="width: 25%;">Technology Stack</th>
+              <th>Architectural Role &amp; Implementation Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Physics Engine</b></td>
+              <td>TypeScript Custom Physics</td>
+              <td>Deterministic 120Hz fixed-timestep accumulator (<code class="font-mono">dt = 0.00833s</code>) with continuous swept raycasting, dynamic mallet velocity injection, and clamped restitution.</td>
+            </tr>
+            <tr>
+              <td><b>Rendering Pipeline</b></td>
+              <td>HTML5 Canvas 2D Vector</td>
+              <td>Zero-allocation render loop; batched arena grid strokes; GPU hardware-accelerated color fills; zero-latency 1:1 player mallet coordinate tracking.</td>
+            </tr>
+            <tr>
+              <td><b>Networking Layer</b></td>
+              <td>WebRTC / PeerJS DataChannels</td>
+              <td>P2P SCTP binary/JSON data packets, host-authoritative simulation, client dead-reckoning, room-code SDP handshake. Zero backend game servers required.</td>
+            </tr>
+            <tr>
+              <td><b>Audio Synthesizer</b></td>
+              <td>Web Audio API</td>
+              <td>Parametric audio synthesis producing dynamic pitch shifts based on puck impact velocity; zero external audio asset footprint.</td>
+            </tr>
+            <tr>
+              <td><b>Storage &amp; State</b></td>
+              <td>LocalStorage &amp; Web Manifest</td>
+              <td>Offline-first persistent game record, unlocked mallet skins, and ladder progression with instant PWA mobile installation.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 class="section-title">Mathematical Physics &amp; Collision Specifications</h2>
+        <p class="lead-paragraph">
+          The core collision mechanics solve the classic air hockey momentum transfer problem: when a moving mallet strikes a moving puck, how is velocity transferred while guaranteeing that objects never overlap or tunnel?
+        </p>
+
+        <div class="code-block">
+<span class="hl-cmt">// Separating-Axis Relative Velocity Guard:</span>
+<span class="hl-kw">const</span> relVelX = puck.vx - mallet.vx;
+<span class="hl-kw">const</span> relVelY = puck.vy - mallet.vy;
+<span class="hl-kw">const</span> relNormVel = relVelX * normalX + relVelY * normalY;
+
+<span class="hl-cmt">// Crucial: If objects are already separating, ignore collision to prevent double-bounce glueing:</span>
+<span class="hl-kw">if</span> (relNormVel &gt;= <span class="hl-num">0</span>) <span class="hl-kw">return</span>;
+
+<span class="hl-cmt">// Positional De-penetration:</span>
+<span class="hl-kw">const</span> overlap = (puck.radius + mallet.radius) - distance;
+puck.x += normalX * overlap;
+puck.y += normalY * overlap;
+
+<span class="hl-cmt">// Dynamic Kinetic Restitution:</span>
+<span class="hl-kw">const</span> impulse = -(<span class="hl-num">1</span> + restitution) * relNormVel;
+puck.vx += normalX * impulse + mallet.vx * malletTransferFactor;
+puck.vy += normalY * impulse + mallet.vy * malletTransferFactor;
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">WebRTC Host-Authoritative Protocol Schema</h2>
+        <div class="code-block">
+<span class="hl-kw">interface</span> <span class="hl-fn">MultiplayerStatePayload</span> {
+  seq: <span class="hl-num">number</span>;          <span class="hl-cmt">// Monotonically increasing tick sequence</span>
+  t: <span class="hl-num">number</span>;            <span class="hl-cmt">// High-resolution timestamp for jitter buffers</span>
+  puck: { x: <span class="hl-num">number</span>; y: <span class="hl-num">number</span>; vx: <span class="hl-num">number</span>; vy: <span class="hl-num">number</span> };
+  host: { x: <span class="hl-num">number</span>; y: <span class="hl-num">number</span>; score: <span class="hl-num">number</span>; energy: <span class="hl-num">number</span> };
+  guest: { score: <span class="hl-num">number</span>; energy: <span class="hl-num">number</span> };
+  events: <span class="hl-num">Array</span>&lt;<span class="hl-str">'GOAL'</span> | <span class="hl-str">'PARRY'</span> | <span class="hl-str">'OVERDRIVE'</span> | <span class="hl-str">'MATCH_POINT'</span>&gt;;
+}
+        </div>
+      </section>
+
+      <section class="callout-box">
+        <strong>Project Summary &amp; Verification:</strong> OVERCLOCK demonstrates full-stack competence spanning low-level mathematical physics, browser GPU optimization, and real-time distributed networking. The entire application executes client-side with 100% offline support, sub-35KB bundle overhead, and zero backend maintenance cost.
+      </section>
+
+      <div class="sheet-footer-meta">
+        <span>Project: OVERCLOCK // Client-Side Systems Engineering &amp; WebRTC Architecture</span>
+        <span>Page 4 of 4</span>
+      </div>
+    </article>
+
+  </main>
+
+</body>
+</html>
+

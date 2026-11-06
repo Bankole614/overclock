@@ -43,16 +43,9 @@ export class GameRenderer {
     }
   }
 
-  public setGlow(color: string, blur: number) {
-    if (this.settings.batterySaver) {
-      this.ctx.shadowBlur = 0;
-      return;
-    }
-    const isMobile =
-      typeof navigator !== 'undefined' &&
-      (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 640);
-    this.ctx.shadowColor = color;
-    this.ctx.shadowBlur = isMobile ? Math.min(blur * 0.35, 6) : blur;
+  public setGlow(_color: string, _blur: number) {
+    // Keep shadowBlur at 0 to guarantee 60-120fps hardware-accelerated rasterization without CPU Gaussian blur stalls
+    this.ctx.shadowBlur = 0;
   }
 
   public triggerShake(intensity: number, durationSec = 0.2) {
@@ -134,16 +127,12 @@ export class GameRenderer {
       this.drawPrediction(prediction, robotPhase);
     }
 
-    // 4. Interpolate Entity Positions
+    // 4. Interpolate Entity Positions (use direct position for playerPaddle for 0ms 1:1 touch/mouse response)
     const puckX = prev.puck.pos.x + (curr.puck.pos.x - prev.puck.pos.x) * interpAlpha;
     const puckY = prev.puck.pos.y + (curr.puck.pos.y - prev.puck.pos.y) * interpAlpha;
 
-    const playerX =
-      prev.playerPaddle.pos.x +
-      (curr.playerPaddle.pos.x - prev.playerPaddle.pos.x) * interpAlpha;
-    const playerY =
-      prev.playerPaddle.pos.y +
-      (curr.playerPaddle.pos.y - prev.playerPaddle.pos.y) * interpAlpha;
+    const playerX = playerPaddleObj.pos.x;
+    const playerY = playerPaddleObj.pos.y;
 
     const robotX =
       prev.robotPaddle.pos.x +
@@ -194,34 +183,22 @@ export class GameRenderer {
     const { width, height, goalWidth, postRadius } = this.table;
     const ctx = this.ctx;
 
-    // Floor gradient themed by equipped arena skin
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+    // Fast solid floor fill themed by equipped arena skin (avoids per-frame CanvasGradient allocations)
     if (phase === 'REDLINE') {
-      bgGrad.addColorStop(0, '#1c0812');
-      bgGrad.addColorStop(0.5, '#0b0409');
-      bgGrad.addColorStop(1, '#0e0b1c');
+      ctx.fillStyle = '#12060d';
     } else if (this.arenaSkin === 'arena_synthwave') {
-      bgGrad.addColorStop(0, '#1d0726');
-      bgGrad.addColorStop(0.5, '#0c0418');
-      bgGrad.addColorStop(1, '#1b062b');
+      ctx.fillStyle = '#11041d';
     } else if (this.arenaSkin === 'arena_matrix') {
-      bgGrad.addColorStop(0, '#02180b');
-      bgGrad.addColorStop(0.5, '#010e06');
-      bgGrad.addColorStop(1, '#031c0d');
+      ctx.fillStyle = '#011107';
     } else if (this.arenaSkin === 'arena_redline') {
-      bgGrad.addColorStop(0, '#1a0404');
-      bgGrad.addColorStop(0.5, '#0d0101');
-      bgGrad.addColorStop(1, '#1e0505');
+      ctx.fillStyle = '#120202';
     } else {
-      bgGrad.addColorStop(0, '#0c0f18');
-      bgGrad.addColorStop(0.5, '#080a10');
-      bgGrad.addColorStop(1, '#0a101d');
+      ctx.fillStyle = '#080b12';
     }
-    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
-    // Glowing grid lines
-    let gridColor = 'rgba(0, 240, 255, 0.04)';
+    // Batched grid lines (1 single GPU draw call instead of 37 separate beginPath/stroke calls)
+    let gridColor = 'rgba(0, 240, 255, 0.045)';
     if (phase === 'REDLINE') {
       gridColor = 'rgba(255, 42, 109, 0.08)';
     } else if (this.arenaSkin === 'arena_synthwave') {
@@ -235,18 +212,16 @@ export class GameRenderer {
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
     const gridSize = 40;
+    ctx.beginPath();
     for (let x = gridSize; x < width; x += gridSize) {
-      ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
-      ctx.stroke();
     }
     for (let y = gridSize; y < height; y += gridSize) {
-      ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
-      ctx.stroke();
     }
+    ctx.stroke();
 
     // Outer rails glow with clock speed and arena skin
     let baseRail = '#00e5ff';

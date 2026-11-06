@@ -128,7 +128,9 @@ export class InputManager {
           this.isTouching = true;
           e.preventDefault();
 
-          this.updateCanvasBounds();
+          if (!this.canvasRect || this.canvasRect.width === 0) {
+            this.updateCanvasBounds();
+          }
           if (!this.canvasRect) return;
 
           const paddleRadius = this.playerPaddleRadius;
