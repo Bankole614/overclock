@@ -759,13 +759,12 @@ window.addEventListener('DOMContentLoaded', () => {
       });
   }
 
-  // Robotic voice intro on opening app (on first user touch/click per browser autoplay policy)
-  const triggerVoiceIntro = () => {
+  // Audio init on first user touch/click per browser autoplay policy
+  const triggerAudioInit = () => {
     game.sound.init();
     game.sound.resume();
-    game.sound.speak('Beat the machine that sees every shot coming.');
   };
-  window.addEventListener('pointerdown', triggerVoiceIntro, { once: true });
+  window.addEventListener('pointerdown', triggerAudioInit, { once: true });
 
   game.init();
 });

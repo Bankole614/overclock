@@ -9,37 +9,6 @@ export class SoundEngine {
   private musicGain: GainNode | null = null;
   public voice = new RobotVoice();
 
-  // Procedural Music Engine
-  private musicTimer: number | null = null;
-  private musicStep = 0;
-  private currentClockSpeed = 1.0;
-  private isMusicPlaying = false;
-
-  // Continuous sound nodes
-  private humOsc: OscillatorNode | null = null;
-  private humGain: GainNode | null = null;
-
-  private servoOsc: OscillatorNode | null = null;
-  private servoGain: GainNode | null = null;
-
-  // Music tension drone
-  private tensionOsc1: OscillatorNode | null = null;
-  private tensionOsc2: OscillatorNode | null = null;
-  private tensionFilter: BiquadFilterNode | null = null;
-  private tensionGain: GainNode | null = null;
-
-  // Persistent Zero-Allocation Music Synthesizer Voices
-  private musicBassOsc: OscillatorNode | null = null;
-  private musicBassFilter: BiquadFilterNode | null = null;
-  private musicBassGain: GainNode | null = null;
-
-  private musicArpOsc: OscillatorNode | null = null;
-  private musicArpFilter: BiquadFilterNode | null = null;
-  private musicArpGain: GainNode | null = null;
-
-  private musicKickOsc: OscillatorNode | null = null;
-  private musicKickGain: GainNode | null = null;
-
   public settings: GameSettings = {
     soundEnabled: true,
     musicEnabled: true,
@@ -50,7 +19,7 @@ export class SoundEngine {
     vibration: true,
     showPredictionLine: true,
     curveShots: true,
-    multiPuckOverload: true,
+    multiPuckOverload: false,
     batterySaver: false,
     difficulty: 'NORMAL',
   };
@@ -82,11 +51,6 @@ export class SoundEngine {
       this.musicGain = this.ctx.createGain();
       this.musicGain.gain.value = this.settings.musicEnabled ? this.settings.musicVolume : 0;
       this.musicGain.connect(this.masterGain);
-
-      this.initContinuousHum();
-      this.initServoWhine();
-      this.initTensionDrone();
-      this.initMusicSynth();
     } catch (e) {
       console.warn('Web Audio not supported or blocked:', e);
     }
@@ -113,304 +77,17 @@ export class SoundEngine {
     this.musicGain.gain.value = this.settings.musicEnabled ? this.settings.musicVolume : 0;
   }
 
-  // --- Puck Air Cushion Hum ---
-  private initContinuousHum() {
-    if (!this.ctx || !this.sfxGain) return;
-    try {
-      this.humOsc = this.ctx.createOscillator();
-      this.humOsc.type = 'triangle';
-      this.humOsc.frequency.setValueAtTime(80, this.ctx.currentTime);
+  // Lightweight continuous sound stubs (continuous audio loops removed to guarantee 0% background CPU and eliminate lag on mobile)
+  public updatePuckHum(_puckSpeed: number, _clockSpeedGHz = 1.0) {}
+  public updateRobotServo(_robotSpeed: number, _isRedline = false) {}
+  public setTensionLevel(_level: number, _clockSpeedGHz = 1.0) {}
+  public startMusic() {}
+  public stopMusic() {}
+  public updateMusicClock(_clockSpeedGHz: number) {}
+  public silenceContinuousSounds() {}
+  public speak(_text: string, _priority = false) {}
 
-      this.humGain = this.ctx.createGain();
-      this.humGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
-
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(250, this.ctx.currentTime);
-
-      this.humOsc.connect(filter);
-      filter.connect(this.humGain);
-      this.humGain.connect(this.sfxGain);
-
-      this.humOsc.start();
-    } catch {
-      // Ignored
-    }
-  }
-
-  public updatePuckHum(puckSpeed: number, clockSpeedGHz = 1.0) {
-    if (!this.ctx || !this.humOsc || !this.humGain || !this.settings.soundEnabled) return;
-    const norm = Math.min(1, Math.max(0, puckSpeed / 2400));
-    const targetFreq = (70 + norm * 150) * (0.8 + clockSpeedGHz * 0.2);
-    const targetGain = 0.02 + norm * 0.08;
-
-    const t = this.ctx.currentTime;
-    this.humOsc.frequency.setTargetAtTime(targetFreq, t, 0.05);
-    this.humGain.gain.setTargetAtTime(targetGain, t, 0.05);
-  }
-
-  // --- Robot Servo Whine ---
-  private initServoWhine() {
-    if (!this.ctx || !this.sfxGain) return;
-    try {
-      this.servoOsc = this.ctx.createOscillator();
-      this.servoOsc.type = 'sawtooth';
-      this.servoOsc.frequency.setValueAtTime(300, this.ctx.currentTime);
-
-      this.servoGain = this.ctx.createGain();
-      this.servoGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
-
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(800, this.ctx.currentTime);
-      filter.Q.setValueAtTime(3, this.ctx.currentTime);
-
-      this.servoOsc.connect(filter);
-      filter.connect(this.servoGain);
-      this.servoGain.connect(this.sfxGain);
-
-      this.servoOsc.start();
-    } catch {
-      // Ignored
-    }
-  }
-
-  public updateRobotServo(robotSpeed: number, isRedline = false) {
-    if (!this.ctx || !this.servoOsc || !this.servoGain || !this.settings.soundEnabled) return;
-    const norm = Math.min(1, Math.max(0, robotSpeed / 1600));
-    const mult = isRedline ? 1.5 : 1.0;
-    const targetFreq = (300 + norm * 800) * mult;
-    const targetGain = norm > 0.05 ? norm * (isRedline ? 0.07 : 0.04) : 0.0001;
-
-    const t = this.ctx.currentTime;
-    this.servoOsc.frequency.setTargetAtTime(targetFreq, t, 0.04);
-    this.servoGain.gain.setTargetAtTime(targetGain, t, 0.04);
-  }
-
-  // --- Tension Drone ---
-  private initTensionDrone() {
-    if (!this.ctx || !this.musicGain) return;
-    try {
-      this.tensionGain = this.ctx.createGain();
-      this.tensionGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
-
-      this.tensionFilter = this.ctx.createBiquadFilter();
-      this.tensionFilter.type = 'lowpass';
-      this.tensionFilter.frequency.setValueAtTime(150, this.ctx.currentTime);
-
-      this.tensionOsc1 = this.ctx.createOscillator();
-      this.tensionOsc1.type = 'sawtooth';
-      this.tensionOsc1.frequency.setValueAtTime(55, this.ctx.currentTime);
-
-      this.tensionOsc2 = this.ctx.createOscillator();
-      this.tensionOsc2.type = 'sawtooth';
-      this.tensionOsc2.frequency.setValueAtTime(55.6, this.ctx.currentTime);
-
-      this.tensionOsc1.connect(this.tensionFilter);
-      this.tensionOsc2.connect(this.tensionFilter);
-      this.tensionFilter.connect(this.tensionGain);
-      this.tensionGain.connect(this.musicGain);
-
-      this.tensionOsc1.start();
-      this.tensionOsc2.start();
-    } catch {
-      // Ignored
-    }
-  }
-
-  public setTensionLevel(level: number, clockSpeedGHz = 1.0) {
-    if (!this.ctx || !this.tensionGain || !this.tensionFilter) return;
-    const t = this.ctx.currentTime;
-    if (level <= 0 || !this.settings.musicEnabled) {
-      this.tensionGain.gain.setTargetAtTime(0.0001, t, 0.2);
-    } else {
-      const clockMult = Math.min(2.0, 0.8 + clockSpeedGHz * 0.25);
-      this.tensionGain.gain.setTargetAtTime(0.14 * level, t, 0.2);
-      this.tensionFilter.frequency.setTargetAtTime((120 + level * 350) * clockMult, t, 0.25);
-    }
-  }
-
-  // --- Persistent Synth Voices (Zero-Allocation Music Engine) ---
-  private initMusicSynth() {
-    if (!this.ctx || !this.musicGain) return;
-    try {
-      const t = this.ctx.currentTime;
-
-      // 1. Persistent Bass Synth Voice
-      this.musicBassOsc = this.ctx.createOscillator();
-      this.musicBassOsc.type = 'sawtooth';
-      this.musicBassOsc.frequency.setValueAtTime(73.4, t);
-
-      this.musicBassFilter = this.ctx.createBiquadFilter();
-      this.musicBassFilter.type = 'lowpass';
-      this.musicBassFilter.frequency.setValueAtTime(450, t);
-      this.musicBassFilter.Q.setValueAtTime(4, t);
-
-      this.musicBassGain = this.ctx.createGain();
-      this.musicBassGain.gain.setValueAtTime(0.0001, t);
-
-      this.musicBassOsc.connect(this.musicBassFilter);
-      this.musicBassFilter.connect(this.musicBassGain);
-      this.musicBassGain.connect(this.musicGain);
-      this.musicBassOsc.start();
-
-      // 2. Persistent Cyber Arp Voice
-      this.musicArpOsc = this.ctx.createOscillator();
-      this.musicArpOsc.type = 'square';
-      this.musicArpOsc.frequency.setValueAtTime(293.7, t);
-
-      this.musicArpFilter = this.ctx.createBiquadFilter();
-      this.musicArpFilter.type = 'bandpass';
-      this.musicArpFilter.frequency.setValueAtTime(675, t);
-      this.musicArpFilter.Q.setValueAtTime(2.5, t);
-
-      this.musicArpGain = this.ctx.createGain();
-      this.musicArpGain.gain.setValueAtTime(0.0001, t);
-
-      this.musicArpOsc.connect(this.musicArpFilter);
-      this.musicArpFilter.connect(this.musicArpGain);
-      this.musicArpGain.connect(this.musicGain);
-      this.musicArpOsc.start();
-
-      // 3. Persistent Kick Voice
-      this.musicKickOsc = this.ctx.createOscillator();
-      this.musicKickOsc.type = 'sine';
-      this.musicKickOsc.frequency.setValueAtTime(40, t);
-
-      this.musicKickGain = this.ctx.createGain();
-      this.musicKickGain.gain.setValueAtTime(0.0001, t);
-
-      this.musicKickOsc.connect(this.musicKickGain);
-      this.musicKickGain.connect(this.musicGain);
-      this.musicKickOsc.start();
-    } catch {
-      // Ignored if blocked by autoplay
-    }
-  }
-
-  // --- Procedural Cyberpunk Synth Music Engine ---
-  public startMusic() {
-    if (!this.settings.musicEnabled || this.isMusicPlaying) return;
-    this.resume();
-    this.isMusicPlaying = true;
-    this.musicStep = 0;
-    this.scheduleNextMusicBeat();
-  }
-
-  public stopMusic() {
-    this.isMusicPlaying = false;
-    if (this.musicTimer !== null) {
-      clearTimeout(this.musicTimer);
-      this.musicTimer = null;
-    }
-    if (this.ctx) {
-      const t = this.ctx.currentTime;
-      if (this.musicBassGain) this.musicBassGain.gain.setTargetAtTime(0.0001, t, 0.04);
-      if (this.musicArpGain) this.musicArpGain.gain.setTargetAtTime(0.0001, t, 0.04);
-      if (this.musicKickGain) this.musicKickGain.gain.setTargetAtTime(0.0001, t, 0.04);
-    }
-  }
-
-  public updateMusicClock(clockSpeedGHz: number) {
-    this.currentClockSpeed = clockSpeedGHz;
-  }
-
-  private scheduleNextMusicBeat() {
-    if (!this.isMusicPlaying || !this.ctx || !this.musicGain || !this.settings.musicEnabled) return;
-
-    // Tempo scales from 124 BPM to 142 BPM with overclocking
-    const bpm = 124 + Math.min(18, (this.currentClockSpeed - 1.0) * 6);
-    const stepDuration = 60 / bpm / 4; // 16th note
-
-    this.playMusicStep(this.musicStep, this.ctx.currentTime);
-    this.musicStep = (this.musicStep + 1) % 16;
-
-    this.musicTimer = window.setTimeout(() => {
-      this.scheduleNextMusicBeat();
-    }, stepDuration * 1000);
-  }
-
-  private playMusicStep(step: number, t: number) {
-    if (!this.ctx || !this.musicGain || !this.settings.musicEnabled) return;
-
-    // Bassline in D minor (D2: 73.4Hz, F2: 87.3Hz, G2: 98Hz, A2: 110Hz, C3: 130.8Hz)
-    const bassNotes = [73.4, 73.4, 73.4, 87.3, 73.4, 73.4, 98.0, 110.0, 73.4, 73.4, 73.4, 87.3, 98.0, 110.0, 130.8, 110.0];
-    const arpNotes = [293.7, 349.2, 440.0, 523.3, 587.3, 440.0, 349.2, 440.0, 293.7, 349.2, 440.0, 523.3, 659.3, 523.3, 440.0, 349.2];
-
-    const cutoff = 450 + (this.currentClockSpeed - 1.0) * 400;
-
-    // 1. Synth Bass (beats 0, 2, 4, 6...)
-    if (step % 2 === 0 && this.musicBassOsc && this.musicBassGain && this.musicBassFilter) {
-      try {
-        this.musicBassOsc.frequency.cancelScheduledValues(t);
-        this.musicBassOsc.frequency.setValueAtTime(bassNotes[step], t);
-
-        this.musicBassFilter.frequency.cancelScheduledValues(t);
-        this.musicBassFilter.frequency.setValueAtTime(cutoff, t);
-
-        this.musicBassGain.gain.cancelScheduledValues(t);
-        this.musicBassGain.gain.setValueAtTime(0.09, t);
-        this.musicBassGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-      } catch {
-        // Ignored
-      }
-    }
-
-    // 2. High Cyber Arpeggio (8th note pattern on off-beats)
-    if (step % 2 === 1 && this.musicArpOsc && this.musicArpGain && this.musicArpFilter) {
-      try {
-        this.musicArpOsc.frequency.cancelScheduledValues(t);
-        this.musicArpOsc.frequency.setValueAtTime(arpNotes[step], t);
-
-        this.musicArpFilter.frequency.cancelScheduledValues(t);
-        this.musicArpFilter.frequency.setValueAtTime(cutoff * 1.5, t);
-
-        this.musicArpGain.gain.cancelScheduledValues(t);
-        this.musicArpGain.gain.setValueAtTime(0.035, t);
-        this.musicArpGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
-      } catch {
-        // Ignored
-      }
-    }
-
-    // 3. Cyber Kick on beats 0, 4, 8, 12
-    if (step % 4 === 0 && this.musicKickOsc && this.musicKickGain) {
-      try {
-        this.musicKickOsc.frequency.cancelScheduledValues(t);
-        this.musicKickOsc.frequency.setValueAtTime(140, t);
-        this.musicKickOsc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
-
-        this.musicKickGain.gain.cancelScheduledValues(t);
-        this.musicKickGain.gain.setValueAtTime(0.12, t);
-        this.musicKickGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
-      } catch {
-        // Ignored
-      }
-    }
-  }
-
-  /**
-   * Immediately silence in-game ambient sounds when returning to menus
-   */
-  public silenceContinuousSounds() {
-    if (!this.ctx) return;
-    const t = this.ctx.currentTime;
-    if (this.humGain) this.humGain.gain.setValueAtTime(0.0001, t);
-    if (this.servoGain) this.servoGain.gain.setValueAtTime(0.0001, t);
-    if (this.tensionGain) this.tensionGain.gain.setValueAtTime(0.0001, t);
-    if (this.musicBassGain) this.musicBassGain.gain.setValueAtTime(0.0001, t);
-    if (this.musicArpGain) this.musicArpGain.gain.setValueAtTime(0.0001, t);
-    if (this.musicKickGain) this.musicKickGain.gain.setValueAtTime(0.0001, t);
-    this.stopMusic();
-  }
-
-  public speak(text: string, priority = false) {
-    if (this.settings.soundEnabled) {
-      this.voice.speak(text, priority);
-    }
-  }
-
-  // --- Sound Effects ---
+  // --- Fast Event-Driven Sound Effects ---
 
   public playPaddleHit(speed: number, isHyper = false) {
     if (!this.ctx || !this.sfxGain || !this.settings.soundEnabled) return;

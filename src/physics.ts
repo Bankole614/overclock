@@ -13,6 +13,8 @@ export class PhysicsEngine {
   private stuckTimer = 0;
   private lastStuckHalf: 'top' | 'bottom' | null = null;
   public maxSpeedLimit = 1800;
+  private playerHitCooldown = 0;
+  private robotHitCooldown = 0;
 
   constructor(public config: TableConfig) {}
 
@@ -51,9 +53,18 @@ export class PhysicsEngine {
       const nx = diff.x / dist;
       const ny = diff.y / dist;
 
+      // Guard against false double-hits on mallet follow-through
+      const relNormVel = relVel.x * nx + relVel.y * ny;
+      if (relNormVel >= 0) {
+        // Already separating: resolve overlap positionally without firing a duplicate hit
+        puck.pos.x = paddle.pos.x + nx * (combinedRadius + 1.5);
+        puck.pos.y = paddle.pos.y + ny * (combinedRadius + 1.5);
+        return null;
+      }
+
       // Push puck outside paddle
-      puck.pos.x = paddle.pos.x + nx * combinedRadius;
-      puck.pos.y = paddle.pos.y + ny * combinedRadius;
+      puck.pos.x = paddle.pos.x + nx * (combinedRadius + 1.5);
+      puck.pos.y = paddle.pos.y + ny * (combinedRadius + 1.5);
 
       // Check for Perfect Parry
       if (paddle.parryActive) {
@@ -123,8 +134,16 @@ export class PhysicsEngine {
         const nx = hitDiff.x / hitDist;
         const ny = hitDiff.y / hitDist;
 
-        puck.pos.x = currentPaddlePos.x + nx * (combinedRadius + 0.1);
-        puck.pos.y = currentPaddlePos.y + ny * (combinedRadius + 0.1);
+        // Guard against swept hit if already separating
+        const relNormVel = relVel.x * nx + relVel.y * ny;
+        if (relNormVel >= 0) {
+          puck.pos.x = currentPaddlePos.x + nx * (combinedRadius + 1.5);
+          puck.pos.y = currentPaddlePos.y + ny * (combinedRadius + 1.5);
+          return null;
+        }
+
+        puck.pos.x = currentPaddlePos.x + nx * (combinedRadius + 1.5);
+        puck.pos.y = currentPaddlePos.y + ny * (combinedRadius + 1.5);
 
         if (paddle.parryActive) {
           const incomingSpeed = Math.hypot(puck.vel.x, puck.vel.y);
@@ -170,6 +189,21 @@ export class PhysicsEngine {
     }
 
     return null;
+  }
+
+  private resolvePaddleOverlap(puck: Puck, paddle: Paddle) {
+    const dx = puck.pos.x - paddle.pos.x;
+    const dy = puck.pos.y - paddle.pos.y;
+    const distSq = dx * dx + dy * dy;
+    const combinedRadius = puck.radius + paddle.radius;
+    if (distSq < combinedRadius * combinedRadius) {
+      let dist = Math.sqrt(distSq);
+      if (dist === 0) dist = 0.001;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      puck.pos.x = paddle.pos.x + nx * (combinedRadius + 1.5);
+      puck.pos.y = paddle.pos.y + ny * (combinedRadius + 1.5);
+    }
   }
 
   private checkPostCollision(
@@ -254,22 +288,35 @@ export class PhysicsEngine {
     puck.pos.x += puck.vel.x * dt;
     puck.pos.y += puck.vel.y * dt;
 
+    if (this.playerHitCooldown > 0) this.playerHitCooldown -= dt;
+    if (this.robotHitCooldown > 0) this.robotHitCooldown -= dt;
+
     // 4. Check paddle collisions
-    const playerHit = this.checkPaddleCollision(puck, playerPaddle, dt);
-    if (playerHit) {
-      playerHit.target = 'player';
-      puck.lastHitter = 'player';
-      puck.hitCount++;
-      collisions.push(playerHit);
+    if (this.playerHitCooldown <= 0) {
+      const playerHit = this.checkPaddleCollision(puck, playerPaddle, dt);
+      if (playerHit) {
+        this.playerHitCooldown = 0.08;
+        playerHit.target = 'player';
+        puck.lastHitter = 'player';
+        puck.hitCount++;
+        collisions.push(playerHit);
+      }
+    } else {
+      this.resolvePaddleOverlap(puck, playerPaddle);
     }
 
-    const robotHit = this.checkPaddleCollision(puck, robotPaddle, dt);
-    if (robotHit) {
-      robotHit.target = 'robot';
-      puck.lastHitter = 'robot';
-      puck.hitCount++;
-      puck.isHyperShot = false; // Reset hyper shot when robot returns it
-      collisions.push(robotHit);
+    if (this.robotHitCooldown <= 0) {
+      const robotHit = this.checkPaddleCollision(puck, robotPaddle, dt);
+      if (robotHit) {
+        this.robotHitCooldown = 0.08;
+        robotHit.target = 'robot';
+        puck.lastHitter = 'robot';
+        puck.hitCount++;
+        puck.isHyperShot = false; // Reset hyper shot when robot returns it
+        collisions.push(robotHit);
+      }
+    } else {
+      this.resolvePaddleOverlap(puck, robotPaddle);
     }
 
     // 5. Side wall collisions

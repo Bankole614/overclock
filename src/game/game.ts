@@ -208,9 +208,10 @@ export class Game {
         this.robotPaddle.vel.x = -input.vel.x;
         this.robotPaddle.vel.y = -input.vel.y;
 
-        if (input.radius) {
-          this.robotPaddle.radius = input.radius;
-        }
+        // Standardize 1v1 multiplayer mallet size (42px) for identical, balanced competitive play
+        this.robotPaddle.radius = 42;
+        this.playerPaddle.radius = 42;
+        this.input.playerPaddleRadius = 42;
 
         if (input.parry && this.robotPaddle.parryCooldown <= 0) {
           this.robotPaddle.parryActive = true;
@@ -259,13 +260,15 @@ export class Game {
         this.puck.isHyperShot = packet.puck.isHyper;
         this.puck.isGolden = packet.puck.isGolden;
 
-        // Opponent (Host) is at top
+        // Opponent (Host) is at top - enforce matching 42px competitive radius
         this.robotPaddle.prevPos = { ...this.robotPaddle.pos };
         this.robotPaddle.pos.x = this.table.width - packet.hostPaddle.pos.x;
         this.robotPaddle.pos.y = this.table.height - packet.hostPaddle.pos.y;
         this.robotPaddle.vel.x = -packet.hostPaddle.vel.x;
         this.robotPaddle.vel.y = -packet.hostPaddle.vel.y;
-        if (packet.hostPaddle.radius) this.robotPaddle.radius = packet.hostPaddle.radius;
+        this.playerPaddle.radius = 42;
+        this.robotPaddle.radius = 42;
+        this.input.playerPaddleRadius = 42;
         this.robotPaddle.parryActive = packet.hostPaddle.parry;
 
         // Scores (mirrored)
@@ -397,7 +400,9 @@ export class Game {
     if (this.mode !== 'SOLO_BOSS') {
       this.robotPaddle.color = '#ff2a6d';
       this.robotPaddle.glowColor = '#ff2a6d';
-      this.robotPaddle.radius = this.playerPaddle.radius;
+      this.playerPaddle.radius = 42;
+      this.robotPaddle.radius = 42;
+      this.input.playerPaddleRadius = 42;
     }
 
     this.resetPositions(this.lastConceded);
