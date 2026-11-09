@@ -1,4 +1,4 @@
-import { BossId, BossProfile } from '../types';
+import { BossId, BossProfile, DifficultyLevel } from '../types';
 
 export const BOSS_ROSTER: Record<BossId, BossProfile> = {
   VECTOR: {
@@ -83,44 +83,121 @@ export const BOSS_ROSTER: Record<BossId, BossProfile> = {
   },
 };
 
-const BOSS_SAVE_KEY = 'overclock_boss_progress_v2';
+export const BOSS_LADDER: BossId[] = ['VECTOR', 'VIPER', 'TITAN', 'PHANTOM', 'APEX'];
+
+const BOSS_SAVE_KEY_V3 = 'overclock_boss_progress_v3';
+const BOSS_SAVE_KEY_V2 = 'overclock_boss_progress_v2';
+
+export type BossDifficultyProgress = Record<BossId, { unlocked: boolean; defeated: boolean }>;
+export type AllBossProgress = Record<DifficultyLevel, BossDifficultyProgress>;
+
+export const createDefaultDifficultyProgress = (): BossDifficultyProgress => ({
+  VECTOR: { unlocked: true, defeated: false },
+  VIPER: { unlocked: false, defeated: false },
+  TITAN: { unlocked: false, defeated: false },
+  PHANTOM: { unlocked: false, defeated: false },
+  APEX: { unlocked: false, defeated: false },
+});
+
+export const createDefaultAllProgress = (): AllBossProgress => ({
+  CASUAL: createDefaultDifficultyProgress(),
+  NORMAL: createDefaultDifficultyProgress(),
+  OVERCLOCKED: createDefaultDifficultyProgress(),
+});
 
 export class BossManager {
-  public bosses: Record<BossId, BossProfile>;
+  public currentDifficulty: DifficultyLevel = 'NORMAL';
   public currentBossId: BossId = 'VECTOR';
+  private progress: AllBossProgress;
 
-  constructor() {
-    this.bosses = JSON.parse(JSON.stringify(BOSS_ROSTER));
+  constructor(difficulty: DifficultyLevel = 'NORMAL') {
+    this.currentDifficulty = difficulty;
+    this.progress = createDefaultAllProgress();
     this.loadProgress();
+    this.validateCurrentBoss();
+  }
+
+  public setDifficulty(difficulty: DifficultyLevel) {
+    this.currentDifficulty = difficulty;
+    this.validateCurrentBoss();
+  }
+
+  public validateCurrentBoss() {
+    if (!this.bosses[this.currentBossId]?.unlocked) {
+      this.currentBossId = 'VECTOR';
+    }
+  }
+
+  public get bosses(): Record<BossId, BossProfile> {
+    return this.getBossesForDifficulty(this.currentDifficulty);
+  }
+
+  public getBossesForDifficulty(difficulty: DifficultyLevel): Record<BossId, BossProfile> {
+    const diffProgress = this.progress[difficulty] || this.progress.NORMAL || createDefaultDifficultyProgress();
+    const result: Record<BossId, BossProfile> = {} as any;
+    for (const id of BOSS_LADDER) {
+      const p = diffProgress[id];
+      result[id] = {
+        ...BOSS_ROSTER[id],
+        unlocked: id === 'VECTOR' ? true : (p?.unlocked ?? false),
+        defeated: p?.defeated ?? false,
+      };
+    }
+    return result;
+  }
+
+  public getProgress(): AllBossProgress {
+    return JSON.parse(JSON.stringify(this.progress));
   }
 
   public loadProgress() {
     try {
-      const raw = localStorage.getItem(BOSS_SAVE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as { id: BossId; unlocked: boolean; defeated: boolean }[];
-        saved.forEach((s) => {
-          if (this.bosses[s.id]) {
-            this.bosses[s.id].unlocked = s.unlocked;
-            this.bosses[s.id].defeated = s.defeated;
+      const rawV3 = localStorage.getItem(BOSS_SAVE_KEY_V3);
+      if (rawV3) {
+        const parsed = JSON.parse(rawV3) as Partial<AllBossProgress>;
+        const difficulties: DifficultyLevel[] = ['CASUAL', 'NORMAL', 'OVERCLOCKED'];
+        for (const diff of difficulties) {
+          if (parsed[diff]) {
+            for (const id of BOSS_LADDER) {
+              if (parsed[diff]![id]) {
+                this.progress[diff][id] = {
+                  unlocked: id === 'VECTOR' ? true : Boolean(parsed[diff]![id].unlocked),
+                  defeated: Boolean(parsed[diff]![id].defeated),
+                };
+              }
+            }
           }
-        });
+          this.progress[diff].VECTOR.unlocked = true;
+        }
+        return;
+      }
+
+      // Backward compatibility migration from V2 (migrates only to NORMAL difficulty)
+      const rawV2 = localStorage.getItem(BOSS_SAVE_KEY_V2);
+      if (rawV2) {
+        const saved = JSON.parse(rawV2) as { id: BossId; unlocked: boolean; defeated: boolean }[];
+        if (Array.isArray(saved)) {
+          saved.forEach((s) => {
+            if (this.progress.NORMAL[s.id]) {
+              this.progress.NORMAL[s.id].unlocked = s.id === 'VECTOR' ? true : Boolean(s.unlocked);
+              this.progress.NORMAL[s.id].defeated = Boolean(s.defeated);
+            }
+          });
+          this.saveProgress();
+        }
       }
     } catch {
       // Default initial state
     }
-    // Always ensure VECTOR is unlocked
-    this.bosses.VECTOR.unlocked = true;
+
+    this.progress.CASUAL.VECTOR.unlocked = true;
+    this.progress.NORMAL.VECTOR.unlocked = true;
+    this.progress.OVERCLOCKED.VECTOR.unlocked = true;
   }
 
   public saveProgress() {
     try {
-      const data = Object.values(this.bosses).map((b) => ({
-        id: b.id,
-        unlocked: b.unlocked,
-        defeated: b.defeated,
-      }));
-      localStorage.setItem(BOSS_SAVE_KEY, JSON.stringify(data));
+      localStorage.setItem(BOSS_SAVE_KEY_V3, JSON.stringify(this.progress));
     } catch {
       // Ignored
     }
@@ -139,23 +216,34 @@ export class BossManager {
   }
 
   public getNextBossId(currentId: BossId): BossId | null {
-    const ladder: BossId[] = ['VECTOR', 'VIPER', 'TITAN', 'PHANTOM', 'APEX'];
-    const idx = ladder.indexOf(currentId);
-    if (idx >= 0 && idx < ladder.length - 1) {
-      return ladder[idx + 1];
+    const idx = BOSS_LADDER.indexOf(currentId);
+    if (idx >= 0 && idx < BOSS_LADDER.length - 1) {
+      return BOSS_LADDER[idx + 1];
     }
     return null;
   }
 
-  public recordDefeat(id: BossId) {
-    if (this.bosses[id]) {
-      this.bosses[id].defeated = true;
-      // Unlock next boss in ladder
-      if (id === 'VECTOR') this.bosses.VIPER.unlocked = true;
-      if (id === 'VIPER') this.bosses.TITAN.unlocked = true;
-      if (id === 'TITAN') this.bosses.PHANTOM.unlocked = true;
-      if (id === 'PHANTOM') this.bosses.APEX.unlocked = true;
-      this.saveProgress();
+  public recordDefeat(id: BossId, difficulty?: DifficultyLevel) {
+    const diff = difficulty || this.currentDifficulty;
+    const diffProgress = this.progress[diff];
+    if (!diffProgress || !diffProgress[id]) return;
+
+    diffProgress[id].defeated = true;
+    const nextId = this.getNextBossId(id);
+    if (nextId && diffProgress[nextId]) {
+      diffProgress[nextId].unlocked = true;
     }
+    this.saveProgress();
+  }
+
+  public isBossUnlocked(id: BossId, difficulty?: DifficultyLevel): boolean {
+    const diff = difficulty || this.currentDifficulty;
+    if (id === 'VECTOR') return true;
+    return Boolean(this.progress[diff]?.[id]?.unlocked);
+  }
+
+  public isBossDefeated(id: BossId, difficulty?: DifficultyLevel): boolean {
+    const diff = difficulty || this.currentDifficulty;
+    return Boolean(this.progress[diff]?.[id]?.defeated);
   }
 }

@@ -154,16 +154,16 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   };
   syncDifficultyButtons(currentDifficulty);
+  game.setDifficulty(currentDifficulty);
 
   diffButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       currentDifficulty = (btn.dataset.diff as any) || 'NORMAL';
       syncDifficultyButtons(currentDifficulty);
       saveAndApplySettings();
-      game.director.setDifficulty(currentDifficulty);
-      if (game.mode === 'SOLO_BOSS') {
-        game.applyBossTuning(game.bossManager.currentBossId);
-      }
+      game.setDifficulty(currentDifficulty);
+      renderBossLadderUI();
+      updateCareerStatsUI();
     });
   });
 
@@ -490,8 +490,12 @@ window.addEventListener('DOMContentLoaded', () => {
       const nextBossId = game.bossManager.getNextBossId(game.bossManager.currentBossId);
       if (nextBossId) {
         const nextBoss = game.bossManager.bosses[nextBossId];
-        setLabel(btnNextBoss, `Next level: ${nextBoss.name}`, 'chevron-right', { after: true });
-        btnNextBoss.classList.remove('hidden');
+        if (nextBoss && nextBoss.unlocked) {
+          setLabel(btnNextBoss, `Next level: ${nextBoss.name}`, 'chevron-right', { after: true });
+          btnNextBoss.classList.remove('hidden');
+        } else {
+          btnNextBoss.classList.add('hidden');
+        }
       } else {
         btnNextBoss.classList.add('hidden');
       }
@@ -505,6 +509,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // --- Navigation Buttons ---
   btnPlayBoss.addEventListener('click', () => {
+    game.bossManager.setDifficulty(currentDifficulty);
     renderBossLadderUI();
     bossModal.classList.remove('hidden');
   });

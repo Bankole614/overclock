@@ -7,6 +7,7 @@ import {
   Score,
   TableConfig,
   BossId,
+  DifficultyLevel,
 } from '../types';
 import { PhysicsEngine } from '../physics';
 import { RobotAI } from '../ai/robotAI';
@@ -97,14 +98,15 @@ export class Game {
     this.physics = new PhysicsEngine(this.table);
 
     const savedSkill = StorageManager.loadDirectorSkill();
-    this.director = new DifficultyDirector(savedSkill);
+    const settings = StorageManager.loadSettings();
+    const initialDifficulty = settings.difficulty || 'NORMAL';
+    this.director = new DifficultyDirector(savedSkill, initialDifficulty);
     this.robot = new RobotAI(this.table, this.director.skill);
-    this.bossManager = new BossManager();
+    this.bossManager = new BossManager(initialDifficulty);
     this.shopManager = new ShopManager();
     this.net = new MultiplayerManager();
 
     this.particles = new ParticleSystem();
-    const settings = StorageManager.loadSettings();
     this.sound = new SoundEngine(settings);
     this.renderer = new GameRenderer(canvas, this.table, this.particles, settings);
     this.input = new InputManager(canvas, this.table);
@@ -294,8 +296,9 @@ export class Game {
     this.robotPaddle.color = boss.color;
     this.robotPaddle.glowColor = boss.glowColor;
 
-    const diff = this.sound.settings.difficulty || 'NORMAL';
+    const diff = this.sound.settings.difficulty || this.director.difficulty || 'NORMAL';
     this.director.setDifficulty(diff);
+    this.bossManager.setDifficulty(diff);
 
     // Dynamic pacing: Tune robot reaction, speed cap and table drag to difficulty
     const speedMult = diff === 'CASUAL' ? 0.68 : diff === 'OVERCLOCKED' ? 1.05 : 0.84;
@@ -312,10 +315,20 @@ export class Game {
     this.robot.say(boss.introQuote, 2.5);
   }
 
-  public selectBoss(bossId: BossId) {
+  public setDifficulty(level: DifficultyLevel) {
+    this.director.setDifficulty(level);
+    this.bossManager.setDifficulty(level);
+    if (this.mode === 'SOLO_BOSS') {
+      this.applyBossTuning(this.bossManager.currentBossId);
+    }
+  }
+
+  public selectBoss(bossId: BossId): boolean {
     if (this.bossManager.selectBoss(bossId)) {
       this.applyBossTuning(bossId);
+      return true;
     }
+    return false;
   }
 
   public setSeriesFormat(format: 'BO1' | 'BO3' | 'BO5' | 'FIRST_TO_3') {
@@ -343,8 +356,7 @@ export class Game {
 
   public startNextBoss(): boolean {
     const nextId = this.bossManager.getNextBossId(this.bossManager.currentBossId);
-    if (nextId) {
-      this.selectBoss(nextId);
+    if (nextId && this.selectBoss(nextId)) {
       this.startSeries(this.series.format);
       return true;
     }
@@ -747,7 +759,8 @@ export class Game {
     if (this.mode === 'SOLO_BOSS') {
       const currentBoss = this.bossManager.getCurrentBoss();
       if (playerWon) {
-        this.bossManager.recordDefeat(currentBoss.id);
+        const diff = this.sound.settings.difficulty || this.director.difficulty || 'NORMAL';
+        this.bossManager.recordDefeat(currentBoss.id, diff);
         this.robot.say(currentBoss.defeatQuote, 3.0);
       }
 
