@@ -22,6 +22,10 @@ export class InputManager {
   private keyboardPos: Vec2 | null = null;
   private isUsingKeyboard = false;
 
+  // Smoothed velocity tracking across 120Hz physics substeps & 60Hz pointer events
+  private smoothedVel: Vec2 = { x: 0, y: 0 };
+  private lastMoveElapsed = 1;
+
   public maxPlayerSpeed = 3500; // Generous mouse speed cap
   public maxTouchSpeed = 25000; // Instant 1:1 follow for touch swipes
   public isTouchDevice = false;
@@ -285,6 +289,9 @@ export class InputManager {
   }
 
   public resetToHome(playerPaddle: Paddle) {
+    this.smoothedVel = { x: 0, y: 0 };
+    this.lastMoveElapsed = 1;
+
     if (this.isTouching && this.activeTouchId !== null) {
       // Player is still holding or moving the mallet on screen: keep tracking without teleporting!
       const { height, width } = this.table;
@@ -379,8 +386,35 @@ export class InputManager {
     }
 
     if (dt > 0) {
-      paddle.vel.x = (paddle.pos.x - paddle.prevPos.x) / dt;
-      paddle.vel.y = (paddle.pos.y - paddle.prevPos.y) / dt;
+      const stepDx = paddle.pos.x - paddle.prevPos.x;
+      const stepDy = paddle.pos.y - paddle.prevPos.y;
+      const movedDist = Math.hypot(stepDx, stepDy);
+
+      if (movedDist > 0.05) {
+        // Pointer/touch events arrive at ~60Hz while physics steps at 120Hz.
+        // Use an effective dt floor (~1/75s) when a discrete pointer jump completes in one substep
+        // so velocity reflects the true hand/mouse speed and stays consistent across substeps.
+        const effectiveDt = dist <= maxStep && !this.isUsingKeyboard ? Math.max(dt, 1 / 75) : dt;
+        const rawVx = stepDx / effectiveDt;
+        const rawVy = stepDy / effectiveDt;
+        this.smoothedVel.x = rawVx * 0.75 + this.smoothedVel.x * 0.25;
+        this.smoothedVel.y = rawVy * 0.75 + this.smoothedVel.y * 0.25;
+        this.lastMoveElapsed = 0;
+      } else {
+        this.lastMoveElapsed += dt;
+        // Hold velocity across the ~16-24ms gap between 60Hz browser input events,
+        // then decay rapidly once the hand/mouse actually stops moving.
+        const decay = this.lastMoveElapsed <= 0.024 ? 0.88 : Math.exp(-dt * 45);
+        this.smoothedVel.x *= decay;
+        this.smoothedVel.y *= decay;
+        if (Math.hypot(this.smoothedVel.x, this.smoothedVel.y) < 5) {
+          this.smoothedVel.x = 0;
+          this.smoothedVel.y = 0;
+        }
+      }
+
+      paddle.vel.x = this.smoothedVel.x;
+      paddle.vel.y = this.smoothedVel.y;
     }
   }
 }

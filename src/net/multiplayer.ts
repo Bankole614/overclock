@@ -8,11 +8,19 @@ export interface NetworkStatePacket {
   hostPaddle: { pos: Vec2; vel: Vec2; radius: number; parry: boolean };
   guestPaddle: { pos: Vec2; vel: Vec2; radius: number; parry: boolean };
   score: Score;
+  series?: {
+    playerGames: number;
+    robotGames: number;
+    targetGamesToWin: number;
+    format: 'BO1' | 'BO3' | 'BO5' | 'FIRST_TO_3';
+  };
   clockSpeed: number;
   goalBanner: string | null;
+  lastScorer?: 'player' | 'robot' | null;
   state: string;
   countdownText: string | null;
   seq?: number;
+  ackHitSeq?: number;
 }
 
 export interface ClientInputPacket {
@@ -22,6 +30,14 @@ export interface ClientInputPacket {
   parry: boolean;
   overdrive: boolean;
   timestamp: number;
+  hitEvent?: {
+    hitSeq: number;
+    puckPos: Vec2;
+    puckVel: Vec2;
+    spin: number;
+    isHyper: boolean;
+    isParry: boolean;
+  };
 }
 
 export type NetRole = 'HOST' | 'GUEST' | 'OFFLINE';

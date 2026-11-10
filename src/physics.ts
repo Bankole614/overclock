@@ -22,10 +22,14 @@ export class PhysicsEngine {
     this.maxSpeedLimit = limit;
   }
 
+  public setRobotHitCooldown(cooldown: number) {
+    this.robotHitCooldown = Math.max(this.robotHitCooldown, cooldown);
+  }
+
   /**
    * Swept circle-circle collision check between moving puck and moving paddle.
    */
-  private checkPaddleCollision(
+  public checkPaddleCollision(
     puck: Puck,
     paddle: Paddle,
     dt: number
@@ -53,10 +57,13 @@ export class PhysicsEngine {
       const nx = diff.x / dist;
       const ny = diff.y / dist;
 
-      // Guard against false double-hits on mallet follow-through
+      const vDotN = puck.vel.x * nx + puck.vel.y * ny;
+      const pDotN = paddle.vel.x * nx + paddle.vel.y * ny;
       const relNormVel = relVel.x * nx + relVel.y * ny;
-      if (relNormVel >= 0) {
-        // Already separating: resolve overlap positionally without firing a duplicate hit
+
+      // Guard against false double-hits on mallet follow-through
+      if (relNormVel > 0 && pDotN <= 0) {
+        // Already separating and paddle is not pushing into puck: resolve overlap positionally
         puck.pos.x = paddle.pos.x + nx * (combinedRadius + 1.5);
         puck.pos.y = paddle.pos.y + ny * (combinedRadius + 1.5);
         return null;
@@ -85,12 +92,10 @@ export class PhysicsEngine {
       }
 
       // Normal rebound with momentum transfer & spin (tuned authentic air hockey elasticity)
-      const vDotN = puck.vel.x * nx + puck.vel.y * ny;
-      const pDotN = paddle.vel.x * nx + paddle.vel.y * ny;
-
-      const impulse = -(1 + 0.46) * (vDotN - Math.max(0, pDotN));
-      puck.vel.x += nx * impulse + paddle.vel.x * 0.32;
-      puck.vel.y += ny * impulse + paddle.vel.y * 0.32;
+      const approachVel = Math.min(0, vDotN - Math.max(0, pDotN));
+      const impulse = Math.max(-(1 + 0.46) * approachVel, pDotN > 0 ? pDotN * 1.15 : 140);
+      puck.vel.x += nx * impulse + paddle.vel.x * 0.34;
+      puck.vel.y += ny * impulse + paddle.vel.y * 0.34;
 
       // Tangential velocity imparts Magnus spin
       const tangentVel = -ny * (puck.vel.x - paddle.vel.x) + nx * (puck.vel.y - paddle.vel.y);
@@ -134,9 +139,12 @@ export class PhysicsEngine {
         const nx = hitDiff.x / hitDist;
         const ny = hitDiff.y / hitDist;
 
+        const vDotN = puck.vel.x * nx + puck.vel.y * ny;
+        const pDotN = paddle.vel.x * nx + paddle.vel.y * ny;
+
         // Guard against swept hit if already separating
         const relNormVel = relVel.x * nx + relVel.y * ny;
-        if (relNormVel >= 0) {
+        if (relNormVel > 0 && pDotN <= 0) {
           puck.pos.x = currentPaddlePos.x + nx * (combinedRadius + 1.5);
           puck.pos.y = currentPaddlePos.y + ny * (combinedRadius + 1.5);
           return null;
@@ -162,12 +170,11 @@ export class PhysicsEngine {
           };
         }
 
-        const vDotN = puck.vel.x * nx + puck.vel.y * ny;
-        const pDotN = paddle.vel.x * nx + paddle.vel.y * ny;
-        const impulse = -(1 + 0.46) * (vDotN - Math.max(0, pDotN));
+        const approachVel = Math.min(0, vDotN - Math.max(0, pDotN));
+        const impulse = Math.max(-(1 + 0.46) * approachVel, pDotN > 0 ? pDotN * 1.15 : 140);
 
-        puck.vel.x += nx * impulse + paddle.vel.x * 0.32;
-        puck.vel.y += ny * impulse + paddle.vel.y * 0.32;
+        puck.vel.x += nx * impulse + paddle.vel.x * 0.34;
+        puck.vel.y += ny * impulse + paddle.vel.y * 0.34;
 
         const tangentVel = -ny * (puck.vel.x - paddle.vel.x) + nx * (puck.vel.y - paddle.vel.y);
         puck.spin = Math.max(-30, Math.min(30, tangentVel * 0.04));
@@ -191,7 +198,7 @@ export class PhysicsEngine {
     return null;
   }
 
-  private resolvePaddleOverlap(puck: Puck, paddle: Paddle) {
+  public resolvePaddleOverlap(puck: Puck, paddle: Paddle) {
     const dx = puck.pos.x - paddle.pos.x;
     const dy = puck.pos.y - paddle.pos.y;
     const distSq = dx * dx + dy * dy;
