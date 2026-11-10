@@ -144,15 +144,15 @@ export class InputManager {
           const rawX = (clientX - this.offsetX) / this.scale;
           const rawY = (clientY - this.offsetY) / this.scale;
 
-          // Reduced ergonomic thumb offset (~16px) so mallet contact edge is visible without feeling disconnected
-          const verticalOffset = this.isTouchDevice ? 16 : 0;
+          // Ergonomic thumb offset (~45px) so mallet is pushed up comfortably above the finger for users with big thumbs
+          const verticalOffset = this.isTouchDevice ? 45 : 0;
           const startX = Math.min(maxX, Math.max(minX, rawX));
           let startY: number;
 
           // Check if touch is within player's rink zone
-          if (rawY <= maxY + 40 && rawY >= minY) {
+          if (rawY <= maxY + 60 && rawY >= minY) {
             startY = Math.min(maxY, Math.max(minY, rawY - verticalOffset));
-          } else if (rawY > maxY + 40) {
+          } else if (rawY > maxY + 60) {
             // Finger touched at the bottom of screen (e.g. phone bezel area)
             // Anchor directly to current target Y to eliminate deadzone jump
             startY = this.targetPos.y;
