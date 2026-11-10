@@ -216,19 +216,23 @@ button:focus-visible, input:focus-visible, .slider:focus-visible { outline: 2px 
   position: absolute; top: 0; left: 0; width: 100%;
   pointer-events: none; z-index: 10;
   padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 22px;
-  display: flex; justify-content: space-between; align-items: center;
-  background: linear-gradient(180deg, rgba(8, 12, 20, 0.75), transparent);
+  /* grid keeps the top-centre column empty so the robot's goal stays visible */
+  display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; column-gap: 8px; row-gap: 6px;
 }
 #hud.hidden { display: none; }
 .hud-side { display: flex; align-items: center; gap: 10px; }
-.hud-center { display: flex; align-items: center; gap: 8px; }
+.hud-center { display: contents; }
+#hud > .hud-side:first-child { grid-area: 1 / 1; }
+#hud > .hud-side:last-child { grid-area: 1 / 3; }
+#btn-pause-toggle { grid-area: 1 / 4; }
+.series-chip { grid-area: 2 / 1; justify-self: start; }
 .hud-meta { display: flex; flex-direction: column; text-align: left; gap: 3px; }
 .hud-robot-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-size: 0.8rem; font-weight: 700; color: var(--heat); }
 .hud-phase-badge { font-size: 0.7rem; color: var(--gold); letter-spacing: 0.6px; }
 .hud-score {
-  font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; line-height: 1;
-  min-width: 48px; text-align: center;
-  background: rgba(14, 21, 35, 0.9); padding: 7px 12px; border-radius: var(--r-sm);
+  font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; line-height: 1;
+  min-width: 40px; text-align: center;
+  background: rgba(14, 21, 35, 0.9); padding: 5px 10px; border-radius: var(--r-sm);
   border: 1px solid var(--line); border-bottom-width: 3px;
 }
 .robot-score-box { color: var(--heat); border-bottom-color: var(--heat); }
@@ -258,7 +262,7 @@ button:focus-visible, input:focus-visible, .slider:focus-visible { outline: 2px 
 #action-bar.hidden { display: none; }
 .action-btn {
   pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 3px;
-  min-width: 76px; min-height: 56px; padding: 8px 14px; border-radius: var(--r-md); border: 1px solid;
+  min-width: 68px; min-height: 48px; padding: 6px 12px; border-radius: var(--r-md); border: 1px solid;
   background: rgba(8, 12, 20, 0.8); backdrop-filter: blur(8px); cursor: pointer; color: #fff;
   transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
@@ -279,7 +283,15 @@ button:focus-visible, input:focus-visible, .slider:focus-visible { outline: 2px 
 @media (pointer: coarse), (max-width: 600px) {
   .key-desktop { display: none !important; }
   .key-mobile { display: inline !important; }
-  .action-btn .key-mobile { display: block !important; }
+  /* Compact, see-through round buttons tucked into the bottom corners */
+  #action-bar { padding: 0 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .action-btn {
+    width: 58px; height: 58px; min-width: 0; min-height: 0; padding: 0; gap: 1px;
+    border-radius: 50%; justify-content: center; background: rgba(8, 12, 20, 0.5); box-shadow: none;
+  }
+  .action-btn svg { width: 1.25rem; height: 1.25rem; }
+  .action-btn .btn-name { font-size: 0.58rem; letter-spacing: 0.3px; }
+  .action-btn .btn-key { display: none !important; }
 }
 
 /* ---------- Cards / modals ---------- */
@@ -466,6 +478,16 @@ input:focus-visible + .slider { outline: 2px solid var(--ice); outline-offset: 2
 .step-desc b { color: var(--text); font-weight: 600; }
 .step-icon-chip { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; vertical-align: middle; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; color: var(--ice); margin: 0 2px; }
 .step-icon-chip svg { width: 13px; height: 13px; }
+
+/* ---------- Confirm dialog (sits above the pause screen) ---------- */
+#confirm-modal { z-index: 40; background: rgba(5, 8, 14, 0.82); }
+.confirm-card { max-width: 360px; }
+.confirm-icon { width: 52px; height: 52px; margin: 0 auto 14px; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 90, 60, 0.1); border: 1px solid rgba(255, 90, 60, 0.5); color: var(--heat); }
+.confirm-icon svg { width: 24px; height: 24px; }
+.confirm-actions { display: flex; flex-direction: column; gap: 10px; }
+.confirm-actions > button { margin: 0; }
+.btn-danger { border-color: rgba(255, 90, 60, 0.5); color: var(--heat); }
+.btn-danger:hover { border-color: var(--heat); color: #fff; background: rgba(255, 90, 60, 0.14); }
 
 /* ---------- Orientation block ---------- */
 #orientation-overlay { display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(8, 12, 20, 0.98); backdrop-filter: blur(12px); flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }

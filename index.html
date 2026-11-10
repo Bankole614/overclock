@@ -35,7 +35,7 @@
           </div>
 
           <div class="hud-center">
-            <span id="hud-series-score" class="series-chip hidden"><i data-lucide="trophy"></i> GAMES: 0 - 0</span>
+            <span id="hud-series-score" class="series-chip hidden"><i data-lucide="trophy"></i> BO3 · 0-0</span>
             <button id="btn-pause-toggle" class="hud-btn" type="button" aria-label="Pause"><i data-lucide="pause"></i></button>
           </div>
 
@@ -46,13 +46,13 @@
 
         <!-- Action bar -->
         <div id="action-bar" class="hidden">
-          <button id="btn-trigger-parry" class="action-btn parry-btn" type="button">
+          <button id="btn-trigger-parry" class="action-btn parry-btn" type="button" aria-label="Parry">
             <i data-lucide="shield"></i>
             <span class="btn-name">Parry</span>
             <span class="btn-key key-desktop">Space / R-click</span>
             <span class="btn-key key-mobile">Tap to deflect</span>
           </button>
-          <button id="btn-trigger-overdrive" class="action-btn overdrive-btn" type="button">
+          <button id="btn-trigger-overdrive" class="action-btn overdrive-btn" type="button" aria-label="Overdrive">
             <i data-lucide="zap"></i>
             <span class="btn-name">Overdrive</span>
             <span class="btn-key key-desktop">Key E</span>
@@ -228,10 +228,24 @@
           </div>
         </div>
 
+        <!-- Confirm (opens above the pause screen) -->
+        <div id="confirm-modal" class="overlay-screen hidden" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+          <div class="modal-card confirm-card">
+            <div class="confirm-icon"><i data-lucide="triangle-alert"></i></div>
+            <h3 id="confirm-title" class="modal-header">Restart match?</h3>
+            <p id="confirm-message" class="modal-note"></p>
+            <div class="confirm-actions">
+              <button id="btn-confirm-cancel" class="btn-primary btn-block" type="button"><i data-lucide="arrow-left"></i> Go back</button>
+              <button id="btn-confirm-yes" class="btn-secondary btn-danger btn-block" type="button">Confirm</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Settings -->
         <div id="settings-modal" class="overlay-screen hidden">
           <div class="modal-card">
             <h3 class="modal-header"><i data-lucide="settings"></i> Settings</h3>
+
             <div class="setting-row-stacked">
               <span class="setting-label"><i data-lucide="gauge"></i> AI Difficulty</span>
               <div class="difficulty-btn-group">
@@ -240,6 +254,8 @@
                 <button class="diff-btn" data-diff="OVERCLOCKED" type="button">Overclocked</button>
               </div>
             </div>
+
+            <div class="setting-group-title">Audio</div>
             <div class="setting-row">
               <span class="setting-label"><i data-lucide="volume-2"></i> Sound effects</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-sound" checked /><span class="slider"></span></label>
@@ -248,6 +264,8 @@
               <span class="setting-label"><i data-lucide="music"></i> Music &amp; drones</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-music" checked /><span class="slider"></span></label>
             </div>
+
+            <div class="setting-group-title">Gameplay</div>
             <div class="setting-row">
               <span class="setting-label"><i data-lucide="layers"></i> Multi-puck overload (arcade)</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-multipuck" /><span class="slider"></span></label>
@@ -260,6 +278,8 @@
               <span class="setting-label"><i data-lucide="vibrate"></i> Haptic vibration</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-vibration" checked /><span class="slider"></span></label>
             </div>
+
+            <div class="setting-group-title">Display</div>
             <div class="setting-row">
               <span class="setting-label"><i data-lucide="eye-off"></i> Reduce motion (no shake)</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-reduce-motion" /><span class="slider"></span></label>
@@ -268,14 +288,17 @@
               <span class="setting-label"><i data-lucide="battery-charging"></i> Cool phone / Battery saver</span>
               <label class="toggle-switch"><input type="checkbox" id="setting-battery-saver" /><span class="slider"></span></label>
             </div>
-            <div class="setting-row" id="setting-row-install">
-              <span class="setting-label"><i data-lucide="download"></i> Install App</span>
-              <button id="btn-settings-install" class="btn-secondary btn-xs" type="button"><i data-lucide="arrow-down-to-line"></i> Install</button>
-            </div>
             <div class="setting-row">
               <span class="setting-label"><i data-lucide="maximize"></i> Fullscreen</span>
               <button id="btn-fullscreen-toggle" class="btn-secondary btn-xs" type="button"><i data-lucide="expand"></i> Toggle</button>
             </div>
+
+            <div class="setting-group-title" id="setting-group-device">Device</div>
+            <div class="setting-row" id="setting-row-install">
+              <span class="setting-label"><i data-lucide="download"></i> Install App</span>
+              <button id="btn-settings-install" class="btn-secondary btn-xs" type="button"><i data-lucide="arrow-down-to-line"></i> Install</button>
+            </div>
+
             <button id="btn-settings-close" class="btn-secondary btn-block" type="button"><i data-lucide="x"></i> Close</button>
           </div>
         </div>

@@ -25,6 +25,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const titleScreen = document.getElementById('title-screen')!;
   const resultScreen = document.getElementById('result-screen')!;
   const pauseScreen = document.getElementById('pause-screen')!;
+  const confirmModal = document.getElementById('confirm-modal')!;
   const settingsModal = document.getElementById('settings-modal')!;
   const statsModal = document.getElementById('stats-modal')!;
   const bossModal = document.getElementById('boss-modal')!;
@@ -47,6 +48,12 @@ window.addEventListener('DOMContentLoaded', () => {
   const btnResume = document.getElementById('btn-resume')!;
   const btnRestart = document.getElementById('btn-restart')!;
   const btnPauseMenu = document.getElementById('btn-pause-menu')!;
+
+  // Confirm Dialog Elements
+  const confirmTitle = document.getElementById('confirm-title')!;
+  const confirmMessage = document.getElementById('confirm-message')!;
+  const btnConfirmYes = document.getElementById('btn-confirm-yes')!;
+  const btnConfirmCancel = document.getElementById('btn-confirm-cancel')!;
 
   // Result Elements
   const btnNextBoss = document.getElementById('btn-next-boss')!;
@@ -97,12 +104,13 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Compact chip text so it never crowds the top of the rink
   const updateSeriesScoreUI = () => {
     if (game.series.targetGamesToWin > 1) {
-      setLabel(hudSeriesScore, `SERIES: ${game.series.playerGames} - ${game.series.robotGames} (${game.series.format})`, 'trophy');
+      setLabel(hudSeriesScore, `${game.series.format} · ${game.series.playerGames}-${game.series.robotGames}`, 'trophy');
       hudSeriesScore.classList.remove('hidden');
     } else if (game.series.format === 'FIRST_TO_3') {
-      setLabel(hudSeriesScore, 'BLITZ (FIRST TO 3)', 'trophy');
+      setLabel(hudSeriesScore, 'BLITZ · 3', 'trophy');
       hudSeriesScore.classList.remove('hidden');
     } else {
       hudSeriesScore.classList.add('hidden');
@@ -220,6 +228,7 @@ window.addEventListener('DOMContentLoaded', () => {
     bosses.forEach((boss) => {
       const card = document.createElement('div');
       card.className = `boss-card ${boss.unlocked ? '' : 'locked'} ${boss.defeated ? 'defeated' : ''}`;
+      card.style.setProperty('--accent', boss.color);
 
       card.innerHTML = `
         <div class="boss-info">
@@ -266,6 +275,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
       const card = document.createElement('div');
       card.className = `shop-card ${isEquipped ? 'equipped' : ''}`;
+      card.style.setProperty('--accent', item.color);
 
       let actionLabel = `<i data-lucide="cpu"></i> ${item.cost}`;
       let actionBtnColor = 'var(--gold)';
@@ -424,6 +434,7 @@ window.addEventListener('DOMContentLoaded', () => {
       actionBar.classList.add('hidden');
       resultScreen.classList.add('hidden');
       pauseScreen.classList.add('hidden');
+      confirmModal.classList.add('hidden');
     } else if (state === 'PLAYING' || state === 'COUNTDOWN' || state === 'POINT_SCORED') {
       titleScreen.classList.add('hidden');
       resultScreen.classList.add('hidden');
@@ -446,6 +457,7 @@ window.addEventListener('DOMContentLoaded', () => {
       hud.classList.add('hidden');
       actionBar.classList.add('hidden');
       pauseScreen.classList.add('hidden');
+      confirmModal.classList.add('hidden');
     }
   };
 
@@ -600,13 +612,55 @@ window.addEventListener('DOMContentLoaded', () => {
   btnPauseToggle.addEventListener('pointerdown', handlePauseToggle);
   btnPauseToggle.addEventListener('click', handlePauseToggle);
   btnResume.addEventListener('click', () => game.togglePause());
-  btnRestart.addEventListener('click', () => {
-    pauseScreen.classList.add('hidden');
-    game.restartMatch();
+
+  // --- Confirm dialog (Restart / Exit from pause) ---
+  let pendingConfirm: (() => void) | null = null;
+
+  const closeConfirm = () => {
+    pendingConfirm = null;
+    confirmModal.classList.add('hidden');
+  };
+
+  const askConfirm = (
+    title: string,
+    message: string,
+    yesLabel: string,
+    yesIcon: string,
+    onYes: () => void
+  ) => {
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    setLabel(btnConfirmYes, yesLabel, yesIcon);
+    pendingConfirm = onYes;
+    confirmModal.classList.remove('hidden');
+  };
+
+  btnConfirmCancel.addEventListener('click', closeConfirm);
+  btnConfirmYes.addEventListener('click', () => {
+    const run = pendingConfirm;
+    closeConfirm();
+    run?.();
   });
+
+  btnRestart.addEventListener('click', () => {
+    askConfirm('Restart match?', 'Your current score in this match will be lost.', 'Restart', 'rotate-ccw', () => {
+      pauseScreen.classList.add('hidden');
+      game.restartMatch();
+    });
+  });
+
   btnPauseMenu.addEventListener('click', () => {
-    pauseScreen.classList.add('hidden');
-    game.goToTitle();
+    const online = game.mode !== 'SOLO_BOSS';
+    askConfirm(
+      'Exit to menu?',
+      online ? 'This ends the online match.' : 'This match will end and your progress in it will be lost.',
+      'Exit',
+      'log-out',
+      () => {
+        pauseScreen.classList.add('hidden');
+        game.goToTitle();
+      }
+    );
   });
 
   btnSettings.addEventListener('click', () => settingsModal.classList.remove('hidden'));
@@ -639,6 +693,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const btnInstallPwa = document.getElementById('btn-install-pwa');
   const btnSettingsInstall = document.getElementById('btn-settings-install');
   const settingRowInstall = document.getElementById('setting-row-install');
+  const settingGroupDevice = document.getElementById('setting-group-device');
   const iosInstallModal = document.getElementById('ios-install-modal');
   const btnCloseIosInstall = document.getElementById('btn-close-ios-install');
   const btnIosInstallBack = document.getElementById('btn-ios-install-back');
@@ -658,12 +713,14 @@ window.addEventListener('DOMContentLoaded', () => {
   const hideAllInstallPrompts = () => {
     if (btnInstallPwa) btnInstallPwa.classList.add('hidden');
     if (settingRowInstall) settingRowInstall.classList.add('hidden');
+    if (settingGroupDevice) settingGroupDevice.classList.add('hidden');
   };
 
   const showInstallPrompts = () => {
     if (!isAppRunningStandalone() && localStorage.getItem('overclock_pwa_installed') !== 'true') {
       if (btnInstallPwa) btnInstallPwa.classList.remove('hidden');
       if (settingRowInstall) settingRowInstall.classList.remove('hidden');
+      if (settingGroupDevice) settingGroupDevice.classList.remove('hidden');
     }
   };
 
