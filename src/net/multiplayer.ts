@@ -66,14 +66,25 @@ export class MultiplayerManager {
   constructor() {}
 
   /**
-   * Host an online room. Generates a short 5-character room code.
+   * Host an online room. Generates or reclaims a session room code.
    */
   public hostGame(onRoomReady: (code: string) => void) {
     this.role = 'HOST';
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000).toString();
-    const fullRoomId = `oc-${randomSuffix}`;
+    // Reclaim room ID from sessionStorage if available so reloading doesn't break the invite
+    let fullRoomId = sessionStorage.getItem('overclock_host_room_id');
+    if (!fullRoomId) {
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000).toString();
+      fullRoomId = `oc-${randomSuffix}`;
+      try {
+        sessionStorage.setItem('overclock_host_room_id', fullRoomId);
+      } catch {}
+    }
 
     try {
+      if (this.peer && !this.peer.destroyed) {
+        this.peer.destroy();
+      }
+
       this.peer = new Peer(fullRoomId);
 
       this.peer.on('open', (id) => {
@@ -86,8 +97,29 @@ export class MultiplayerManager {
         this.setupConnection();
       });
 
-      this.peer.on('error', (err) => {
+      this.peer.on('error', (err: any) => {
         console.warn('PeerJS host error:', err);
+        // If the ID was still taken (e.g. quick refresh before server cleared it), generate fresh one
+        if (err.type === 'unavailable-id') {
+          try {
+            sessionStorage.removeItem('overclock_host_room_id');
+          } catch {}
+          const newSuffix = Math.floor(1000 + Math.random() * 9000).toString();
+          const fallbackId = `oc-${newSuffix}`;
+          try {
+            sessionStorage.setItem('overclock_host_room_id', fallbackId);
+          } catch {}
+          this.peer = new Peer(fallbackId);
+          this.peer.on('open', (id) => {
+            this.roomId = id.toUpperCase();
+            onRoomReady(this.roomId);
+          });
+          this.peer.on('connection', (conn) => {
+            this.conn = conn;
+            this.setupConnection();
+          });
+          return;
+        }
         if (this.onError) this.onError(err.message || 'Connection error');
       });
     } catch (e) {
@@ -101,19 +133,53 @@ export class MultiplayerManager {
    */
   public joinGame(roomCode: string) {
     this.role = 'GUEST';
-    const targetId = roomCode.trim().toLowerCase();
+    let targetId = roomCode.trim().toLowerCase();
+    if (!targetId.startsWith('oc-')) {
+      targetId = `oc-${targetId}`;
+    }
 
     try {
+      if (this.peer && !this.peer.destroyed) {
+        this.peer.destroy();
+      }
+
+      let connectionTimeout: any = null;
+      let hasConnected = false;
+
       this.peer = new Peer();
 
       this.peer.on('open', () => {
         this.conn = this.peer!.connect(targetId, { reliable: true });
         this.setupConnection();
+
+        // 10 second timeout for inactive/expired room
+        connectionTimeout = setTimeout(() => {
+          if (!hasConnected && !this.isConnected) {
+            if (this.conn) {
+              try { this.conn.close(); } catch {}
+            }
+            if (this.onError) {
+              this.onError('Room host is offline or the invite has expired. Please check the code or ask the host for a new invite.');
+            }
+          }
+        }, 10000);
       });
 
-      this.peer.on('error', (err) => {
+      const originalOnConnected = this.onConnected;
+      this.onConnected = () => {
+        hasConnected = true;
+        if (connectionTimeout) clearTimeout(connectionTimeout);
+        if (originalOnConnected) originalOnConnected();
+      };
+
+      this.peer.on('error', (err: any) => {
         console.warn('PeerJS join error:', err);
-        if (this.onError) this.onError(err.message || 'Room not found');
+        if (connectionTimeout) clearTimeout(connectionTimeout);
+        if (err.type === 'peer-unavailable') {
+          if (this.onError) this.onError('Room not found. The host may have left, closed the game, or the code expired.');
+        } else {
+          if (this.onError) this.onError(err.message || 'Could not connect to room');
+        }
       });
     } catch (e) {
       console.error(e);
@@ -190,6 +256,9 @@ export class MultiplayerManager {
   public disconnect() {
     this.isConnected = false;
     this.role = 'OFFLINE';
+    try {
+      sessionStorage.removeItem('overclock_host_room_id');
+    } catch {}
     if (this.conn) {
       this.conn.close();
       this.conn = null;

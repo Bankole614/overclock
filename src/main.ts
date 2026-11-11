@@ -407,22 +407,32 @@ window.addEventListener('DOMContentLoaded', () => {
 
   btnJoinRoom.addEventListener('click', () => {
     const code = inputRoomCode.value.trim();
-    if (!code) return;
+    if (!code) {
+      joinStatusMsg.textContent = 'Please enter a room code.';
+      return;
+    }
 
-    joinStatusMsg.textContent = 'Connecting to host...';
+    setLabel(btnJoinRoom, 'Connecting...', 'loader-2', { spin: true });
+    btnJoinRoom.setAttribute('disabled', 'true');
+    joinStatusMsg.textContent = 'Contacting host room...';
     game.net.joinGame(code);
 
     game.net.onConnected = () => {
+      setLabel(btnJoinRoom, 'Connected!', 'check');
       joinStatusMsg.textContent = 'Connected! Starting match...';
       setTimeout(() => {
         multiplayerModal.classList.add('hidden');
+        setLabel(btnJoinRoom, 'Join', 'log-in');
+        btnJoinRoom.removeAttribute('disabled');
         game.mode = 'MULTIPLAYER_GUEST';
         game.startMatch();
       }, 500);
     };
 
     game.net.onError = (err) => {
-      joinStatusMsg.textContent = `Error: ${err}`;
+      setLabel(btnJoinRoom, 'Join', 'log-in');
+      btnJoinRoom.removeAttribute('disabled');
+      joinStatusMsg.textContent = `❌ ${err}`;
     };
   });
 
