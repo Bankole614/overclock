@@ -73,7 +73,6 @@ window.addEventListener('DOMContentLoaded', () => {
   // Settings Elements
   const toggleSound = document.getElementById('setting-sound') as HTMLInputElement;
   const toggleMusic = document.getElementById('setting-music') as HTMLInputElement;
-  const toggleMultiPuck = document.getElementById('setting-multipuck') as HTMLInputElement;
   const toggleLaser = document.getElementById('setting-laser') as HTMLInputElement;
   const toggleVibration = document.getElementById('setting-vibration') as HTMLInputElement;
   const toggleReduceMotion = document.getElementById('setting-reduce-motion') as HTMLInputElement;
@@ -143,7 +142,6 @@ window.addEventListener('DOMContentLoaded', () => {
   let currentDifficulty = currentSettings.difficulty || 'NORMAL';
   toggleSound.checked = currentSettings.soundEnabled;
   toggleMusic.checked = currentSettings.musicEnabled;
-  toggleMultiPuck.checked = currentSettings.multiPuckOverload;
   toggleLaser.checked = currentSettings.showPredictionLine;
   toggleVibration.checked = currentSettings.vibration;
   toggleReduceMotion.checked = currentSettings.reduceMotion;
@@ -179,7 +177,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const updated = {
       soundEnabled: toggleSound.checked,
       musicEnabled: toggleMusic.checked,
-      multiPuckOverload: toggleMultiPuck.checked,
+      multiPuckOverload: false,
       showPredictionLine: toggleLaser.checked,
       vibration: toggleVibration.checked,
       reduceMotion: toggleReduceMotion.checked,
@@ -195,7 +193,6 @@ window.addEventListener('DOMContentLoaded', () => {
   const settingToggles = [
     toggleSound,
     toggleMusic,
-    toggleMultiPuck,
     toggleLaser,
     toggleVibration,
     toggleReduceMotion,

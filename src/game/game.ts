@@ -828,29 +828,6 @@ export class Game {
     this.prevState.playerPaddle.pos.y = this.playerPaddle.pos.y;
     this.prevState.robotPaddle.pos.x = this.robotPaddle.pos.x;
     this.prevState.robotPaddle.pos.y = this.robotPaddle.pos.y;
-
-    // Check Multi-Puck Overload at 6-6 Match Point
-    if (this.score.player === 6 && this.score.robot === 6 && this.sound.settings.multiPuckOverload) {
-      this.spawnSecondPuck();
-    }
-  }
-
-  private spawnSecondPuck() {
-    this.puck2 = {
-      id: 'puck_overload',
-      pos: { x: this.table.width / 2, y: this.table.height / 2 },
-      vel: { x: (Math.random() - 0.5) * 500, y: Math.random() > 0.5 ? 400 : -400 },
-      radius: this.table.puckRadius,
-      spin: 0,
-      isHyperShot: true,
-      isRailgun: false,
-      isGolden: false,
-      trail: [],
-      lastHitter: null,
-      hitCount: 0,
-    };
-    this.particles.emitEMPWave({ x: this.table.width / 2, y: this.table.height / 2 });
-    this.sound.playGlitchSound();
   }
 
   private updateBossPhase() {
