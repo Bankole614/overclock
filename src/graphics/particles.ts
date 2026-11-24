@@ -192,7 +192,8 @@ export class ParticleSystem {
   }
 
   public render(ctx: CanvasRenderingContext2D) {
-    // Render shockwaves cleanly without expensive blur passes
+    // Render shockwaves cleanly without leaking globalAlpha to subsequent HUD draws
+    ctx.save();
     for (let i = 0; i < this.maxShockwaves; i++) {
       const s = this.shockwaves[i];
       if (s.active && s.alpha > 0.01) {
@@ -206,7 +207,6 @@ export class ParticleSystem {
     }
 
     // Render particles
-    ctx.save();
     for (let i = 0; i < this.maxParticles; i++) {
       const p = this.pool[i];
       if (p.active && p.alpha > 0.01) {

@@ -7,42 +7,55 @@ export class DifficultyDirector {
   public gamesPlayed = 0;
   public difficulty: DifficultyLevel = 'NORMAL';
 
-  constructor(startSkill = 0.35, difficulty: DifficultyLevel = 'NORMAL') {
+  constructor(startSkill = 0.48, difficulty: DifficultyLevel = 'NORMAL') {
     this.difficulty = difficulty;
-    this.skill = difficulty === 'CASUAL' ? 0.22 : difficulty === 'OVERCLOCKED' ? 0.55 : startSkill;
+    if (difficulty === 'CASUAL') {
+      this.skill = Math.min(startSkill, 0.25);
+    } else if (difficulty === 'OVERCLOCKED') {
+      this.skill = Math.max(startSkill, 0.65);
+    } else {
+      this.skill = clamp(startSkill, 0.42, 0.80);
+    }
   }
 
   setDifficulty(level: DifficultyLevel) {
     this.difficulty = level;
     if (level === 'CASUAL') {
-      this.skill = Math.min(this.skill, 0.35);
+      this.skill = clamp(this.skill, 0.12, 0.38);
     } else if (level === 'OVERCLOCKED') {
-      this.skill = Math.max(this.skill, 0.50);
+      this.skill = clamp(this.skill, 0.60, 0.98);
+    } else {
+      this.skill = clamp(this.skill, 0.40, 0.80);
     }
   }
 
   // Call after every point scored
   onPoint(playerScored: boolean, playerScore: number, robotScore: number) {
     const lead = robotScore - playerScore;
-    const minSkill = this.difficulty === 'CASUAL' ? 0.10 : this.difficulty === 'OVERCLOCKED' ? 0.40 : 0.18;
-    const maxSkill = this.difficulty === 'CASUAL' ? 0.45 : this.difficulty === 'OVERCLOCKED' ? 0.95 : 0.65;
+    const minSkill = this.difficulty === 'CASUAL' ? 0.12 : this.difficulty === 'OVERCLOCKED' ? 0.55 : 0.30;
+    const maxSkill = this.difficulty === 'CASUAL' ? 0.45 : this.difficulty === 'OVERCLOCKED' ? 0.98 : 0.80;
 
     if (playerScored) {
-      this.skill += this.difficulty === 'CASUAL' ? 0.02 : 0.04;
+      if (this.difficulty === 'CASUAL') {
+        this.skill += 0.025;
+      } else {
+        const playerLead = playerScore - robotScore;
+        this.skill += playerLead >= 2 ? 0.065 : 0.04;
+      }
     } else {
       if (this.difficulty === 'CASUAL') {
-        if (lead >= 2) this.skill -= 0.10;
-        else if (lead >= 1) this.skill -= 0.06;
+        if (lead >= 2) this.skill -= 0.09;
+        else if (lead >= 1) this.skill -= 0.05;
       } else {
         if (lead >= 3) {
-          this.skill -= 0.08;
+          this.skill -= 0.07;
         } else if (lead >= 2) {
-          this.skill -= 0.05;
+          this.skill -= 0.04;
         } else if (lead <= 0) {
           this.skill += 0.015;
         }
         if (robotScore >= 5 && lead >= 2) {
-          this.skill -= 0.06;
+          this.skill -= 0.05;
         }
       }
     }
@@ -52,13 +65,13 @@ export class DifficultyDirector {
   // Call after each game finishes
   onGameEnd(playerWon: boolean) {
     this.gamesPlayed++;
-    const minSkill = this.difficulty === 'CASUAL' ? 0.10 : this.difficulty === 'OVERCLOCKED' ? 0.40 : 0.18;
-    const maxSkill = this.difficulty === 'CASUAL' ? 0.45 : this.difficulty === 'OVERCLOCKED' ? 0.95 : 0.65;
+    const minSkill = this.difficulty === 'CASUAL' ? 0.12 : this.difficulty === 'OVERCLOCKED' ? 0.55 : 0.30;
+    const maxSkill = this.difficulty === 'CASUAL' ? 0.45 : this.difficulty === 'OVERCLOCKED' ? 0.98 : 0.80;
 
-    if (this.gamesPlayed <= 2) {
-      this.skill = Math.min(this.skill, this.difficulty === 'CASUAL' ? 0.30 : 0.45);
+    if (this.difficulty === 'CASUAL' && this.gamesPlayed <= 2) {
+      this.skill = Math.min(this.skill, 0.32);
     } else {
-      this.skill += playerWon ? 0.04 : -0.035;
+      this.skill += playerWon ? 0.05 : -0.035;
     }
     this.skill = clamp(this.skill, minSkill, maxSkill);
   }

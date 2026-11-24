@@ -16,6 +16,8 @@ export class GameRenderer {
   private timeSec = 0;
   public arenaSkin = 'arena_default';
   public arenaColor = '#00f0ff';
+  public trailColor = '#00f0ff';
+  public trailSkin = 'trail_default';
   private goalCamScale = 1.0;
 
   constructor(
@@ -165,7 +167,15 @@ export class GameRenderer {
     }
 
     // 6. Draw Paddles
-    this.drawRobotPaddle(robotX, robotY, robotPaddleObj.radius, robotState, robotPhase, robotPaddleObj.color);
+    this.drawRobotPaddle(
+      robotX,
+      robotY,
+      robotPaddleObj.radius,
+      robotState,
+      robotPhase,
+      robotPaddleObj.color,
+      robotPaddleObj.parryActive
+    );
     this.drawPlayerPaddle(playerX, playerY, playerPaddleObj);
 
     // 7. Draw Puck with Spin/Hyper/Golden Aura
@@ -368,6 +378,22 @@ export class GameRenderer {
     ctx.lineTo(x, y + 16);
     ctx.stroke();
 
+    // PHANTOM signature: Decoy laser reticle
+    if (prediction.decoyIntercept) {
+      const { x: dx, y: dy } = prediction.decoyIntercept;
+      ctx.globalAlpha = 0.55 + Math.sin(this.timeSec * 18) * 0.25;
+      ctx.strokeStyle = '#d946ef';
+      ctx.beginPath();
+      ctx.arc(dx, dy, 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(dx - 15, dy);
+      ctx.lineTo(dx + 15, dy);
+      ctx.moveTo(dx, dy - 15);
+      ctx.lineTo(dx, dy + 15);
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 
@@ -388,15 +414,20 @@ export class GameRenderer {
       ctx.moveTo(p1.x, p1.y);
       ctx.lineTo(p2.x, p2.y);
 
-      let strokeColor = `rgba(0, 240, 255, ${p2.alpha * (0.3 + spdNorm * 0.7)})`;
+      let strokeColor = this.trailColor || '#00f0ff';
+      let alpha = p2.alpha * (0.35 + spdNorm * 0.65);
       if (puck.isHyperShot) {
-        strokeColor = `rgba(255, 215, 0, ${p2.alpha})`;
+        strokeColor = '#ffd700';
+        alpha = p2.alpha;
       } else if (isOverclocked) {
-        strokeColor = `rgba(255, 80, 0, ${p2.alpha * (0.4 + spdNorm * 0.6)})`;
+        strokeColor = '#ff5000';
+        alpha = p2.alpha * (0.4 + spdNorm * 0.6);
       } else if (puck.lastHitter === 'robot') {
-        strokeColor = `rgba(255, 42, 109, ${p2.alpha * (0.3 + spdNorm * 0.7)})`;
+        strokeColor = '#ff2a6d';
+        alpha = p2.alpha * (0.3 + spdNorm * 0.7);
       }
 
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = puck.radius * (0.4 + spdNorm * 0.8) * p2.alpha * (puck.isHyperShot ? 1.5 : 1);
       ctx.lineCap = 'round';
@@ -461,10 +492,21 @@ export class GameRenderer {
     r: number,
     state: RobotState,
     phase: BossPhase,
-    bossColor = '#ff2a6d'
+    bossColor = '#ff2a6d',
+    parryActive = false
   ) {
     const ctx = this.ctx;
     ctx.save();
+
+    if (parryActive) {
+      ctx.beginPath();
+      ctx.arc(x, y, r * 1.55, 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.22)';
+      ctx.fill();
+    }
 
     let mainColor = bossColor;
     if (phase === 'REDLINE') mainColor = '#ff0033';

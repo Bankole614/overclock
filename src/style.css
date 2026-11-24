@@ -106,6 +106,8 @@ button:focus-visible, input:focus-visible, .slider:focus-visible { outline: 2px 
   padding: calc(32px + env(safe-area-inset-top, 0px)) 20px calc(32px + env(safe-area-inset-bottom, 0px));
   transition: opacity 0.25s ease, visibility 0.25s ease;
   overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   touch-action: pan-y;
 }
 /* Spacers centre content when it fits and collapse when it doesn't */
@@ -298,7 +300,8 @@ button:focus-visible, input:focus-visible, .slider:focus-visible { outline: 2px 
 .modal-card, .result-box {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
   padding: 26px 22px; width: 100%; box-shadow: var(--shadow-card), var(--edge);
-  max-height: 100%; overflow-y: auto; touch-action: pan-y; flex: 0 1 auto; min-height: 0;
+  max-height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  touch-action: pan-y; flex: 0 1 auto; min-height: 0;
 }
 .modal-card { max-width: 440px; }
 .modal-card.wide-modal { max-width: 540px; }
@@ -509,8 +512,13 @@ input:focus-visible + .slider { outline: 2px solid var(--ice); outline-offset: 2
   .score-comparison { font-size: 2.8rem; }
 }
 
-/* Native vertical scrolling inside modals and cards */
-.modal-card, .modal-card *, .boss-grid, .boss-card, .boss-card *, .shop-grid, .shop-card, .shop-card * { touch-action: pan-y !important; }
+/* Native vertical scrolling inside modals, result screens, and cards */
+.overlay-screen, .overlay-screen *,
+.modal-card, .modal-card *,
+.result-box, .result-box *,
+.boss-grid, .boss-card, .boss-card *,
+.shop-grid, .shop-card, .shop-card * { touch-action: pan-y !important; }
+.net-input { touch-action: auto !important; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }

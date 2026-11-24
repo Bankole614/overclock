@@ -1,4 +1,4 @@
-import { GameSettings, LifetimeStats } from '../types';
+import { DifficultyLevel, GameSettings, LifetimeStats } from '../types';
 
 const SETTINGS_KEY = 'overclock_settings_v2';
 const STATS_KEY = 'overclock_stats_v2';
@@ -105,22 +105,30 @@ export class StorageManager {
     return stats;
   }
 
-  static loadDirectorSkill(): number {
+  static loadDirectorSkill(difficulty: DifficultyLevel = 'NORMAL'): number {
+    const defaultSkill = difficulty === 'CASUAL' ? 0.22 : difficulty === 'OVERCLOCKED' ? 0.65 : 0.48;
     try {
-      const raw = localStorage.getItem(SKILL_KEY);
-      if (raw) {
-        const val = parseFloat(raw);
-        if (!isNaN(val) && val >= 0.15 && val <= 0.95) return val;
+      const scoped = localStorage.getItem(`${SKILL_KEY}_${difficulty}`);
+      if (scoped) {
+        const val = parseFloat(scoped);
+        if (!isNaN(val) && val >= 0.10 && val <= 0.98) return val;
+      }
+      if (difficulty === 'NORMAL') {
+        const legacy = localStorage.getItem(SKILL_KEY);
+        if (legacy) {
+          const val = parseFloat(legacy);
+          if (!isNaN(val) && val >= 0.15 && val <= 0.95) return val;
+        }
       }
     } catch {
       // Ignored
     }
-    return 0.35;
+    return defaultSkill;
   }
 
-  static saveDirectorSkill(skill: number) {
+  static saveDirectorSkill(skill: number, difficulty: DifficultyLevel = 'NORMAL') {
     try {
-      localStorage.setItem(SKILL_KEY, skill.toFixed(3));
+      localStorage.setItem(`${SKILL_KEY}_${difficulty}`, skill.toFixed(3));
     } catch {
       // Ignored
     }

@@ -417,13 +417,12 @@ window.addEventListener('DOMContentLoaded', () => {
     game.net.onConnected = () => {
       setLabel(btnJoinRoom, 'Connected!', 'check');
       joinStatusMsg.textContent = 'Connected! Starting match...';
-      setTimeout(() => {
-        multiplayerModal.classList.add('hidden');
-        setLabel(btnJoinRoom, 'Join', 'log-in');
-        btnJoinRoom.removeAttribute('disabled');
-        game.mode = 'MULTIPLAYER_GUEST';
-        game.startMatch();
-      }, 500);
+      // Set mode immediately so initial host packets are never dropped
+      game.mode = 'MULTIPLAYER_GUEST';
+      multiplayerModal.classList.add('hidden');
+      setLabel(btnJoinRoom, 'Join', 'log-in');
+      btnJoinRoom.removeAttribute('disabled');
+      game.startMatch();
     };
 
     game.net.onError = (err) => {
@@ -432,6 +431,13 @@ window.addEventListener('DOMContentLoaded', () => {
       joinStatusMsg.textContent = `❌ ${err}`;
     };
   });
+
+  game.net.onDisconnected = () => {
+    if (game.mode !== 'SOLO_BOSS' && game.state !== 'TITLE') {
+      joinStatusMsg.textContent = 'Opponent disconnected.';
+      game.goToTitle();
+    }
+  };
 
   // --- State Changes ---
   game.onStateChange = (state) => {
@@ -524,6 +530,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
     resetRematchButton();
     resultScreen.classList.remove('hidden');
+    resultScreen.scrollTop = 0;
+    const resultBox = resultScreen.querySelector('.result-box');
+    if (resultBox) resultBox.scrollTop = 0;
   };
 
   // --- Navigation Buttons ---
@@ -538,6 +547,12 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   btnOpenMultiplayer.addEventListener('click', () => {
+    // Reset host room UI when reopening after a finished/disconnected session
+    if (!game.net.isConnected) {
+      hostCodeDisplay.classList.add('hidden');
+      btnHostRoom.classList.remove('hidden');
+      setLabel(btnHostRoom, 'Create room code', 'plus');
+    }
     multiplayerModal.classList.remove('hidden');
   });
 

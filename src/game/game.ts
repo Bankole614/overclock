@@ -108,9 +108,9 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     this.physics = new PhysicsEngine(this.table);
 
-    const savedSkill = StorageManager.loadDirectorSkill();
     const settings = StorageManager.loadSettings();
     const initialDifficulty = settings.difficulty || 'NORMAL';
+    const savedSkill = StorageManager.loadDirectorSkill(initialDifficulty);
     this.director = new DifficultyDirector(savedSkill, initialDifficulty);
     this.robot = new RobotAI(this.table, this.director.skill);
     this.bossManager = new BossManager(initialDifficulty);
@@ -550,13 +550,12 @@ export class Game {
     this.robotPaddle.color = boss.color;
     this.robotPaddle.glowColor = boss.glowColor;
 
-    const diff = this.sound.settings.difficulty || this.director.difficulty || 'NORMAL';
+    const diff = this.director.difficulty || this.sound.settings.difficulty || 'NORMAL';
+    this.sound.settings.difficulty = diff;
     this.director.setDifficulty(diff);
     this.bossManager.setDifficulty(diff);
 
     // Dynamic pacing: Tune robot reaction, speed cap and table drag to difficulty
-    const speedMult = diff === 'CASUAL' ? 0.68 : diff === 'OVERCLOCKED' ? 1.05 : 0.84;
-    const reactionAdd = diff === 'CASUAL' ? 140 : diff === 'OVERCLOCKED' ? 0 : 45;
     const puckDrag = diff === 'CASUAL' ? 0.16 : diff === 'OVERCLOCKED' ? 0.07 : 0.10;
     const initialMaxSpeed = diff === 'CASUAL' ? 1350 : diff === 'OVERCLOCKED' ? 1850 : 1600;
 
@@ -564,12 +563,18 @@ export class Game {
     this.physics.config.puckDrag = puckDrag;
     this.physics.setMaxSpeedLimit(initialMaxSpeed);
 
-    this.robot.config.maxSpeed = Math.round(boss.speed * speedMult);
-    this.robot.config.reactionMs = boss.reactionMs + reactionAdd;
+    this.robot.setBossTuning(
+      { id: boss.id, speed: boss.speed, reactionMs: boss.reactionMs },
+      diff
+    );
+    this.robot.setSkill(this.director.skill);
     this.robot.say(boss.introQuote, 2.5);
   }
 
   public setDifficulty(level: DifficultyLevel) {
+    this.sound.settings.difficulty = level;
+    const savedForDiff = StorageManager.loadDirectorSkill(level);
+    this.director.skill = savedForDiff;
     this.director.setDifficulty(level);
     this.bossManager.setDifficulty(level);
     if (this.mode === 'SOLO_BOSS') {
@@ -623,6 +628,8 @@ export class Game {
     this.playerPaddle.glowColor = equipped.paddleColor;
     this.renderer.arenaSkin = equipped.arenaSkin;
     this.renderer.arenaColor = equipped.arenaColor;
+    this.renderer.trailColor = equipped.trailColor;
+    this.renderer.trailSkin = this.shopManager.state.equippedTrail || 'trail_default';
   }
 
   private captureRenderState(): RenderState {
@@ -641,7 +648,12 @@ export class Game {
   }
 
   public goToTitle() {
+    if (this.mode !== 'SOLO_BOSS') {
+      this.net.disconnect();
+      this.mode = 'SOLO_BOSS';
+    }
     this.state = 'TITLE';
+    this.input.releaseTouch();
     this.sound.silenceContinuousSounds();
     if (this.onStateChange) this.onStateChange('TITLE');
   }
@@ -675,6 +687,11 @@ export class Game {
       this.playerPaddle.radius = 42;
       this.robotPaddle.radius = 42;
       this.input.playerPaddleRadius = 42;
+    } else {
+      const soloPlayerRadius = this.input.isTouchDevice ? 48 : this.table.paddleRadius;
+      this.playerPaddle.radius = soloPlayerRadius;
+      this.input.playerPaddleRadius = soloPlayerRadius;
+      this.applyBossTuning(this.bossManager.currentBossId);
     }
 
     this.resetPositions(this.lastConceded);
@@ -739,17 +756,26 @@ export class Game {
     }
   }
 
+  private getBaseClockGHz(): number {
+    if (this.mode === 'SOLO_BOSS' && this.bossManager.currentBossId === 'APEX') {
+      const diff = this.director.difficulty || 'NORMAL';
+      return diff === 'CASUAL' ? 3.2 : diff === 'OVERCLOCKED' ? 5.5 : 4.5;
+    }
+    return 1.0;
+  }
+
   public startCountdown(full = true) {
     this.state = 'COUNTDOWN';
     this.goalScoredBanner = null;
     this.lastScorer = null;
-    this.clockSpeedGHz = 1.0;
+    this.clockSpeedGHz = this.getBaseClockGHz();
     this.rallyHits = 0;
     this.puck.isGolden = false;
 
-    const diff = this.sound.settings.difficulty || 'NORMAL';
+    const diff = this.director.difficulty || 'NORMAL';
     const baseSpeed = diff === 'CASUAL' ? 1350 : diff === 'OVERCLOCKED' ? 1850 : 1600;
-    this.physics.setMaxSpeedLimit(baseSpeed);
+    const speedScale = diff === 'CASUAL' ? 100 : diff === 'OVERCLOCKED' ? 180 : 130;
+    this.physics.setMaxSpeedLimit(baseSpeed + (this.clockSpeedGHz - 1.0) * speedScale);
 
     if (full) {
       this.countdownTimer = 3.2;
@@ -770,6 +796,7 @@ export class Game {
     if (this.state === 'PLAYING' || this.state === 'COUNTDOWN' || this.state === 'POINT_SCORED') {
       this.prePauseState = this.state;
       this.state = 'PAUSED';
+      this.input.releaseTouch();
       this.sound.silenceContinuousSounds();
       if (this.onStateChange) this.onStateChange(this.state);
     } else if (this.state === 'PAUSED') {
@@ -868,6 +895,11 @@ export class Game {
     this.pointPauseTimer = 0.95;
     this.accumulator = 0; // Clear physics accumulator
 
+    // Capture shot telemetry BEFORE zeroing puck velocity
+    const pointsAwarded = 1;
+    const robotWasOvercommitted = this.robot.isOvercommitted();
+    const crossTableAngle = Math.abs(this.puck.vel.x) > 650;
+
     // Freeze pucks and displace beyond trigger zone
     this.puck.vel.x = 0;
     this.puck.vel.y = 0;
@@ -878,11 +910,6 @@ export class Game {
       this.puck2.pos.y = scorer === 'player' ? -this.table.puckRadius - 40 : this.table.height + this.table.puckRadius + 40;
     }
 
-    // Strict authentic air hockey rule: 1 goal = exactly 1 point
-    const pointsAwarded = 1;
-    const robotWasOvercommitted = this.robot.isOvercommitted();
-    const crossTableAngle = Math.abs(this.puck.vel.x) > 650;
-
     this.tracker.onGoalScored(scorer, robotWasOvercommitted, crossTableAngle);
     this.renderer.triggerGoalCam();
     this.sound.triggerHaptic([60, 40, 100]);
@@ -891,8 +918,13 @@ export class Game {
       this.score.player += pointsAwarded;
       this.goalScoredBanner = 'GOAL!';
       this.sound.playGoalHorn(true);
-      this.renderer.triggerShake(1.4, 0.4);
-      this.particles.emitGoalExplosion({ x: this.table.width / 2, y: 15 }, '#00f0ff');
+      const equipped = this.shopManager.getEquippedColors();
+      const goalSkin = this.shopManager.state.equippedGoal;
+      this.renderer.triggerShake(goalSkin === 'goal_nova' ? 2.0 : 1.4, 0.45);
+      this.particles.emitGoalExplosion({ x: this.table.width / 2, y: 15 }, equipped.goalColor);
+      if (goalSkin === 'goal_glitch') {
+        this.particles.emitLightningArcs({ x: this.table.width / 2, y: 40 }, 45, '#9d4edd');
+      }
       this.robot.triggerGlitch(900);
       this.sound.playGlitchSound();
       this.playerPaddle.overdriveCharge = Math.min(100, this.playerPaddle.overdriveCharge + 25);
@@ -942,9 +974,11 @@ export class Game {
     this.robot.setSkill(this.director.skill);
     this.updateBossPhase();
 
-    this.clockSpeedGHz = 1.0;
+    this.clockSpeedGHz = this.getBaseClockGHz();
     this.rallyHits = 0;
-    this.physics.setMaxSpeedLimit(1800);
+    const diff = this.director.difficulty || 'NORMAL';
+    const baseSpeed = diff === 'CASUAL' ? 1350 : diff === 'OVERCLOCKED' ? 1850 : 1600;
+    this.physics.setMaxSpeedLimit(baseSpeed);
     this.puck2 = null;
 
     if (this.score.player >= this.winningScore || this.score.robot >= this.winningScore) {
@@ -985,6 +1019,7 @@ export class Game {
 
   private endMatch(playerWon: boolean) {
     this.state = 'MATCH_END';
+    this.input.releaseTouch();
     this.sound.silenceContinuousSounds();
 
     if (playerWon) {
@@ -998,7 +1033,9 @@ export class Game {
     this.tracker.stats.playerScore = this.score.player;
     this.tracker.stats.robotScore = this.score.robot;
     this.tracker.stats.winner = playerWon ? 'player' : 'robot';
-    this.tracker.stats.maxClockSpeedGHz = Number(this.clockSpeedGHz.toFixed(1));
+    this.tracker.stats.maxClockSpeedGHz = Number(
+      Math.max(this.tracker.stats.maxClockSpeedGHz, this.clockSpeedGHz).toFixed(1)
+    );
     this.tracker.stats.seriesFormat = this.series.format;
     this.tracker.stats.seriesGames = `${this.series.playerGames} - ${this.series.robotGames}`;
 
@@ -1015,7 +1052,7 @@ export class Game {
       }
 
       this.director.onGameEnd(playerWon);
-      StorageManager.saveDirectorSkill(this.director.skill);
+      StorageManager.saveDirectorSkill(this.director.skill, this.director.difficulty);
       this.robot.setSkill(this.director.skill);
 
       StorageManager.recordMatch(
@@ -1253,11 +1290,6 @@ export class Game {
     // 2. Update Robot AI (Solo Boss Mode)
     if (this.mode === 'SOLO_BOSS') {
       this.robot.update(this.fixedDt, now, this.puck, this.robotPaddle);
-
-      // VIPER boss signature: auto-curve on hit
-      if (this.bossManager.currentBossId === 'VIPER' && this.puck.lastHitter === 'robot') {
-        this.puck.spin = 28;
-      }
     }
 
     // 3. Step Physics for primary puck
@@ -1275,23 +1307,32 @@ export class Game {
         this.tracker.onHit(hitter);
         this.rallyHits++;
 
-        const diff = this.sound.settings.difficulty || 'NORMAL';
+        const diff = this.director.difficulty || 'NORMAL';
         const clockRamp = diff === 'CASUAL' ? 0.08 : diff === 'OVERCLOCKED' ? 0.28 : 0.16;
         const maxGHz = diff === 'CASUAL' ? 2.5 : diff === 'OVERCLOCKED' ? 5.5 : 3.8;
         const baseSpeed = diff === 'CASUAL' ? 1350 : diff === 'OVERCLOCKED' ? 1850 : 1600;
         const speedScale = diff === 'CASUAL' ? 100 : diff === 'OVERCLOCKED' ? 180 : 130;
 
-        this.clockSpeedGHz = Math.min(maxGHz, 1.0 + this.rallyHits * clockRamp);
+        this.clockSpeedGHz = Math.min(
+          Math.max(maxGHz, this.getBaseClockGHz()),
+          this.getBaseClockGHz() + this.rallyHits * clockRamp
+        );
+        if (this.clockSpeedGHz > this.tracker.stats.maxClockSpeedGHz) {
+          this.tracker.stats.maxClockSpeedGHz = Number(this.clockSpeedGHz.toFixed(1));
+        }
         this.physics.setMaxSpeedLimit(baseSpeed + (this.clockSpeedGHz - 1.0) * speedScale);
 
         if (c.isParry) {
-          this.tracker.stats.parriesCount++;
+          if (hitter === 'player') {
+            this.tracker.stats.parriesCount++;
+            this.playerPaddle.overdriveCharge = Math.min(100, this.playerPaddle.overdriveCharge + 35);
+            this.robot.say('PARRY DETECTED: REFLECTED TRAJECTORY!', 1.8);
+          } else if (this.mode === 'SOLO_BOSS') {
+            this.robot.say('COUNTER-PARRY EXECUTED!', 1.6);
+          }
           this.sound.playParry();
           this.particles.emitParryBlast(c.pos);
           this.renderer.triggerShake(1.2, 0.25);
-
-          this.playerPaddle.overdriveCharge = Math.min(100, this.playerPaddle.overdriveCharge + 35);
-          this.robot.say('PARRY DETECTED: REFLECTED TRAJECTORY!', 1.8);
           this.sound.playRobotSpeech();
         } else {
           this.sound.playPaddleHit(c.speed, this.puck.isHyperShot);
@@ -1301,6 +1342,24 @@ export class Game {
 
           if (hitter === 'player') {
             this.playerPaddle.overdriveCharge = Math.min(100, this.playerPaddle.overdriveCharge + 8);
+          } else if (this.mode === 'SOLO_BOSS') {
+            const bossId = this.bossManager.currentBossId;
+            if (bossId === 'VIPER') {
+              // VIPER boss signature: vicious Magnus curve aimed back toward the center/corners
+              const curveDir = this.puck.pos.x < this.table.width / 2 ? -1 : 1;
+              this.puck.spin = curveDir * 28;
+            } else if (bossId === 'TITAN') {
+              // TITAN boss signature: heavy kinetic smash up to 2,200 px/s
+              const smashCap = diff === 'CASUAL' ? 1600 : diff === 'OVERCLOCKED' ? 2200 : 1950;
+              const curSpd = Math.hypot(this.puck.vel.x, this.puck.vel.y);
+              if (curSpd > 100 && this.puck.vel.y > 0) {
+                const targetSpd = Math.min(smashCap, Math.max(curSpd * 1.24, smashCap * 0.72));
+                const scale = targetSpd / curSpd;
+                this.puck.vel.x *= scale;
+                this.puck.vel.y *= scale;
+                this.renderer.triggerShake(0.9, 0.18);
+              }
+            }
           }
 
           if (c.speed > 1300) {

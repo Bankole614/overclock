@@ -143,18 +143,22 @@ export class MultiplayerManager {
         this.peer.destroy();
       }
 
-      let connectionTimeout: any = null;
-      let hasConnected = false;
+      let connectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
       this.peer = new Peer();
 
       this.peer.on('open', () => {
         this.conn = this.peer!.connect(targetId, { reliable: true });
-        this.setupConnection();
+        this.setupConnection(() => {
+          if (connectionTimeout) {
+            clearTimeout(connectionTimeout);
+            connectionTimeout = null;
+          }
+        });
 
         // 10 second timeout for inactive/expired room
         connectionTimeout = setTimeout(() => {
-          if (!hasConnected && !this.isConnected) {
+          if (!this.isConnected) {
             if (this.conn) {
               try { this.conn.close(); } catch {}
             }
@@ -165,16 +169,12 @@ export class MultiplayerManager {
         }, 10000);
       });
 
-      const originalOnConnected = this.onConnected;
-      this.onConnected = () => {
-        hasConnected = true;
-        if (connectionTimeout) clearTimeout(connectionTimeout);
-        if (originalOnConnected) originalOnConnected();
-      };
-
       this.peer.on('error', (err: any) => {
         console.warn('PeerJS join error:', err);
-        if (connectionTimeout) clearTimeout(connectionTimeout);
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout);
+          connectionTimeout = null;
+        }
         if (err.type === 'peer-unavailable') {
           if (this.onError) this.onError('Room not found. The host may have left, closed the game, or the code expired.');
         } else {
@@ -187,11 +187,12 @@ export class MultiplayerManager {
     }
   }
 
-  private setupConnection() {
+  private setupConnection(onOpenHook?: () => void) {
     if (!this.conn) return;
 
     this.conn.on('open', () => {
       this.isConnected = true;
+      if (onOpenHook) onOpenHook();
       if (this.onConnected) this.onConnected();
     });
 
