@@ -176,7 +176,13 @@ export class ShopManager {
     try {
       const raw = localStorage.getItem(SHOP_SAVE_KEY);
       if (raw) {
-        return { ...defaultState, ...JSON.parse(raw) };
+        const parsed = JSON.parse(raw);
+        const merged: CosmeticState = { ...defaultState, ...parsed };
+        const requiredDefaults = ['skin_default', 'trail_default', 'goal_default', 'arena_default'];
+        merged.unlockedItems = Array.from(
+          new Set([...requiredDefaults, ...(Array.isArray(merged.unlockedItems) ? merged.unlockedItems : [])])
+        );
+        return merged;
       }
     } catch {
       // Ignored

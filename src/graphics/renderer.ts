@@ -419,12 +419,12 @@ export class GameRenderer {
       if (puck.isHyperShot) {
         strokeColor = '#ffd700';
         alpha = p2.alpha;
-      } else if (isOverclocked) {
-        strokeColor = '#ff5000';
-        alpha = p2.alpha * (0.4 + spdNorm * 0.6);
       } else if (puck.lastHitter === 'robot') {
         strokeColor = '#ff2a6d';
         alpha = p2.alpha * (0.3 + spdNorm * 0.7);
+      } else if (isOverclocked && this.trailSkin === 'trail_default') {
+        strokeColor = '#ff5000';
+        alpha = p2.alpha * (0.4 + spdNorm * 0.6);
       }
 
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));

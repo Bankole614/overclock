@@ -457,7 +457,11 @@ export class Game {
           if (playerJustScored) {
             this.tracker.onGoalScored('player', false, false);
             this.sound.playGoalHorn(true);
-            this.particles.emitGoalExplosion({ x: this.table.width / 2, y: 15 }, '#00f0ff');
+            const equipped = this.shopManager.getEquippedColors();
+            this.particles.emitGoalExplosion({ x: this.table.width / 2, y: 15 }, equipped.goalColor);
+            if (this.shopManager.state.equippedGoal === 'goal_glitch') {
+              this.particles.emitLightningArcs({ x: this.table.width / 2, y: 40 }, 45, '#9d4edd');
+            }
             this.playerPaddle.overdriveCharge = Math.min(
               100,
               this.playerPaddle.overdriveCharge + 25
@@ -626,6 +630,7 @@ export class Game {
     const equipped = this.shopManager.getEquippedColors();
     this.playerPaddle.color = equipped.paddleColor;
     this.playerPaddle.glowColor = equipped.paddleColor;
+    this.playerPaddle.skinId = this.shopManager.state.equippedPaddle || 'skin_default';
     this.renderer.arenaSkin = equipped.arenaSkin;
     this.renderer.arenaColor = equipped.arenaColor;
     this.renderer.trailColor = equipped.trailColor;
